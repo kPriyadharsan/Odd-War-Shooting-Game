@@ -13,6 +13,8 @@ import {
   submitRowDrawing,
   selectCombatTarget,
   fireCombatShot,
+  passPlayerTurn,
+  startRoomPlaying,
   updateRoomSettings,
   drawRoomBookPage
 } from '../controllers/roomController.js';
@@ -45,6 +47,10 @@ router.post('/:code/drawings', submitRowDrawing);
 // Combat Engine, Shooting & Row Elimination (Task 10)
 router.post('/:code/combat/target', selectCombatTarget);
 router.post('/:code/combat/fire', fireCombatShot);
+
+// Turn Management & Match Lifecycle (Task 11)
+router.post('/:code/turn/pass', passPlayerTurn);
+router.post('/:code/play', startRoomPlaying);
 
 // Host settings & Book Engine compatibility
 router.patch('/:code/settings', updateRoomSettings);

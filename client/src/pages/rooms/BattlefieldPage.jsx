@@ -119,6 +119,10 @@ export const BattlefieldPage = () => {
             }
           }
         );
+
+        // Ensure match transitions from STARTING to PLAYING (Task 11)
+        socket.emit('START_PLAYING', { roomCode });
+        roomApi.startPlaying({ code: roomCode }).catch(() => {});
       } catch (err) {
         if (isMounted) {
           setError(err.message || 'Failed to load battlefield');
@@ -237,6 +241,43 @@ export const BattlefieldPage = () => {
       setIsFiringShot(false);
     };
 
+    // Task 11: Turn Lifecycle Socket Events
+    const handleTurnStarted = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+      const isMyTurnNow = data.activePlayerId === currentPlayer.playerId;
+      if (isMyTurnNow) {
+        soundEffects.playMagicShimmer();
+        showNotification(`⚡ YOUR TURN! (Turn #${data.turnNumber}) Open the Magical Book!`);
+      } else {
+        const activeName =
+          data.room?.players?.find((p) => p.playerId === data.activePlayerId)?.nickname || 'Another warrior';
+        showNotification(`Turn #${data.turnNumber}: Waiting for ${activeName}'s turn.`);
+      }
+    };
+
+    const handleTurnUpdated = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+    };
+
+    const handleTurnCompleted = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+    };
+
+    const handlePlayerEliminated = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+      soundEffects.playPencilStrike();
+      showNotification(`☠️ Warrior ${data.targetNickname || 'Player'} has been completely ELIMINATED!`);
+    };
+
+    const handleAmmunitionUpdated = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+    };
+
     socket.on('room:state', handleRoomState);
     socket.on('ROOM_STATE', handleRoomState);
     socket.on('room:player_left', handlePlayerLeft);
@@ -267,6 +308,18 @@ export const BattlefieldPage = () => {
     socket.on('COMBAT_ERROR', handleCombatError);
     socket.on('combat:error', handleCombatError);
 
+    // Turn & Match Lifecycle events (Task 11)
+    socket.on('TURN_STARTED', handleTurnStarted);
+    socket.on('turn:started', handleTurnStarted);
+    socket.on('TURN_UPDATED', handleTurnUpdated);
+    socket.on('turn:updated', handleTurnUpdated);
+    socket.on('TURN_COMPLETED', handleTurnCompleted);
+    socket.on('turn:completed', handleTurnCompleted);
+    socket.on('PLAYER_ELIMINATED', handlePlayerEliminated);
+    socket.on('player:eliminated', handlePlayerEliminated);
+    socket.on('AMMUNITION_UPDATED', handleAmmunitionUpdated);
+    socket.on('ammunition:updated', handleAmmunitionUpdated);
+
     return () => {
       isMounted = false;
       socket.off('room:state', handleRoomState);
@@ -292,6 +345,16 @@ export const BattlefieldPage = () => {
       socket.off('combat:match_finished', handleMatchFinished);
       socket.off('COMBAT_ERROR', handleCombatError);
       socket.off('combat:error', handleCombatError);
+      socket.off('TURN_STARTED', handleTurnStarted);
+      socket.off('turn:started', handleTurnStarted);
+      socket.off('TURN_UPDATED', handleTurnUpdated);
+      socket.off('turn:updated', handleTurnUpdated);
+      socket.off('TURN_COMPLETED', handleTurnCompleted);
+      socket.off('turn:completed', handleTurnCompleted);
+      socket.off('PLAYER_ELIMINATED', handlePlayerEliminated);
+      socket.off('player:eliminated', handlePlayerEliminated);
+      socket.off('AMMUNITION_UPDATED', handleAmmunitionUpdated);
+      socket.off('ammunition:updated', handleAmmunitionUpdated);
     };
   }, [roomCode, currentPlayer.playerId]);
 
@@ -538,6 +601,24 @@ export const BattlefieldPage = () => {
     }
   };
 
+  // Task 11: Pass Active Turn
+  const handlePassTurn = async () => {
+    try {
+      socketRef.current?.emit('PASS_TURN', {
+        roomCode: room.code,
+        playerId: currentPlayer.playerId
+      });
+      await roomApi.passTurn({
+        code: room.code,
+        playerId: currentPlayer.playerId
+      });
+      soundEffects.playPencilStrike();
+      showNotification('You passed your turn.');
+    } catch (err) {
+      showNotification(err.message || 'Failed to pass turn');
+    }
+  };
+
   if (isLoading) {
     return (
       <NotebookBackground className="py-16">
@@ -680,6 +761,62 @@ export const BattlefieldPage = () => {
           )}
         </AnimatePresence>
 
+        {/* =========================================================================
+            TASK 11: AUTHORITATIVE MATCH TURN & LIFECYCLE INDICATOR BANNER
+            ========================================================================= */}
+        <div className="mb-5 p-3.5 sm:p-4 rounded-xl border-2 border-[#242730] bg-[#FFFDF9] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-base border-2 shrink-0 ${
+                isMyTurn
+                  ? 'bg-[#2E8557] border-[#242730] text-white shadow-xs animate-pulse'
+                  : 'bg-[#FAF6EE] border-[#D5CFC3] text-[#8C929D]'
+              }`}
+            >
+              #{room.gameState?.turnNumber || 1}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs uppercase tracking-wider text-[#8C929D]">
+                  TURN #{room.gameState?.turnNumber || 1} •{' '}
+                  {isMyTurn ? (
+                    <strong className="text-[#2E8557]">YOUR TURN</strong>
+                  ) : (
+                    <span>
+                      ACTIVE: <strong>{room.players?.find((p) => p.playerId === room.gameState?.activePlayerId)?.nickname || 'Opponent'}</strong>
+                    </span>
+                  )}
+                </span>
+                {isMyTurn && <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-ping" />}
+              </div>
+
+              <p className="font-display font-bold text-sm text-[#242730] mt-0.5">
+                {room.status === 'FINISHED'
+                  ? `Match Finished! Winner: ${winnerNickname || 'Warrior'}`
+                  : isMyTurn
+                  ? room.gameState?.turnPhase === 'AWAITING_ACTION'
+                    ? `Phase 2: ${room.gameState?.currentTurn?.eligibleAction?.description || 'Execute your eligible action below.'}`
+                    : 'Phase 1: Open the Magical Book to generate your page and activate a station!'
+                  : `Waiting for ${room.players?.find((p) => p.playerId === room.gameState?.activePlayerId)?.nickname || 'opponent'} to take their turn.`}
+              </p>
+            </div>
+          </div>
+
+          {/* Turn Action Controls (Pass Turn if active) */}
+          {isMyTurn && room.status === 'PLAYING' && room.gameState?.turnPhase === 'AWAITING_ACTION' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handlePassTurn}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D5CFC3] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#5C6069] shadow-xs cursor-pointer transition-colors"
+              >
+                <span>Pass Turn</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Action Prompt Banner: When an odd row is activated for current player */}
         {eligibleRowNumber !== null && (
           <motion.div
@@ -765,7 +902,7 @@ export const BattlefieldPage = () => {
         </div>
 
         {/* =========================================================================
-            TASK 10: COMBAT ACTION CONTROL BAR
+            TASK 10 & 11: COMBAT ACTION CONTROL BAR
             ========================================================================= */}
         <div className="mb-6">
           <CombatActionPanel
@@ -775,6 +912,7 @@ export const BattlefieldPage = () => {
             targetOpponent={targetOpponent}
             onFireShot={handleFireShot}
             onClearTarget={handleClearTarget}
+            onPassTurn={handlePassTurn}
             isFiring={isFiringShot}
             isMyTurn={isMyTurn}
             combatError={combatError}

@@ -231,6 +231,19 @@ const roomSchema = new mongoose.Schema(
         type: Number,
         default: 0
       },
+      turnOrder: {
+        type: [String],
+        default: []
+      },
+      turnPhase: {
+        type: String,
+        enum: ['AWAITING_BOOK', 'AWAITING_ACTION', 'RESOLVED'],
+        default: 'AWAITING_BOOK'
+      },
+      currentTurn: {
+        type: Object,
+        default: null
+      },
       isBookFlipping: {
         type: Boolean,
         default: false

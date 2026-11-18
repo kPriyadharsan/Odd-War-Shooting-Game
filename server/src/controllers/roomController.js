@@ -331,6 +331,49 @@ export const fireCombatShot = async (req, res, next) => {
 };
 
 /**
+ * Pass turn voluntarily (Task 11)
+ */
+export const passPlayerTurn = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId } = req.body;
+
+    if (!code || !playerId) {
+      return sendError(res, 'code and playerId are required to pass turn', 400);
+    }
+
+    const result = await roomService.passTurn({
+      code,
+      playerId
+    });
+
+    return sendSuccess(res, result, 'Turn passed successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
+ * Transition match to PLAYING state (Task 11)
+ */
+export const startRoomPlaying = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+
+    if (!code) {
+      return sendError(res, 'code is required', 400);
+    }
+
+    const room = await roomService.startPlaying({ code });
+    return sendSuccess(res, { room }, 'Room transitioned to playing');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
  * Legacy server-authoritative random book page draw endpoint
  * Validates that drawing uses the room's configured bookPageCount
  */

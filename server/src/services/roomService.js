@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS } from '../models/Room.js';
 import { ShadeService } from './shadeService.js';
 import { BookEngine } from '../game-engine/BookEngine.js';
+import { TurnService } from './turnService.js';
+import { GAME_RULES_CONFIG } from '../config/gameRulesConfig.js';
 import { getDatabaseStatus } from '../config/database.js';
 import { logger } from '../utils/logger.js';
 
@@ -10,14 +12,21 @@ import { logger } from '../utils/logger.js';
  * In-memory room store fallback for development mode when MongoDB is not running.
  * Key: roomCode -> Room Object
  */
-const inMemoryRooms = new Map();
+export const inMemoryRooms = new Map();
+
+/**
+ * Helper to fetch internal room representation (used in test harnesses)
+ */
+export const getInternalRoom = (code) => {
+  return inMemoryRooms.get((code || '').toUpperCase().trim());
+};
 
 /**
  * Disconnection grace timers for temporary network disconnects
  * Key: playerId -> NodeJS.Timeout
  */
 const disconnectGraceTimers = new Map();
-const DISCONNECT_GRACE_PERIOD_MS = 25000; // 25 seconds grace period before auto-leaving
+const DISCONNECT_GRACE_PERIOD_MS = GAME_RULES_CONFIG.disconnectGracePeriodMs; // 60 seconds configurable grace period
 
 /**
  * Generates an uppercase 6-character room code (e.g. "ODD482", "WAR791", "K9P2X4")
@@ -654,27 +663,50 @@ export const roomService = {
 
     room.status = ROOM_STATUS.STARTING;
 
-    if (!room.gameState) {
-      room.gameState = {
-        turnNumber: 1,
-        activePlayerId: room.players[0].playerId,
-        activePlayerIndex: 0,
-        isBookFlipping: false,
-        lastFlip: null,
-        history: []
-      };
-    } else {
-      room.gameState.turnNumber = 1;
-      room.gameState.activePlayerId = room.players[0].playerId;
-      room.gameState.activePlayerIndex = 0;
-      room.gameState.isBookFlipping = false;
-    }
+    // Initialize deterministic turn order and turn management (Task 11)
+    TurnService.initializeMatchTurns(room);
 
     if (isDbConnected) {
+      room.markModified('gameState');
       await room.save();
     }
 
     logger.info(`[RoomService] Host ${room.hostNickname} started match for room ${cleanCode}! Transitioned to STARTING.`);
+    return sanitizeRoom(room);
+  },
+
+  /**
+   * Authoritatively transitions room from STARTING to PLAYING when battlefield is entered.
+   */
+  startPlaying: async ({ code }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = isDbConnected ? await Room.findOne({ code: cleanCode }) : inMemoryRooms.get(cleanCode);
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error(`Match is ${room.status.toLowerCase()}.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.STARTING || room.status === ROOM_STATUS.READY) {
+      room.status = ROOM_STATUS.PLAYING;
+      if (!room.gameState?.turnOrder || room.gameState.turnOrder.length === 0) {
+        TurnService.initializeMatchTurns(room);
+      }
+      if (isDbConnected) {
+        room.markModified('gameState');
+        await room.save();
+      }
+      logger.info(`[RoomService] Room ${cleanCode} transitioned to PLAYING! Turn #1 active.`);
+    }
+
     return sanitizeRoom(room);
   },
 
@@ -779,22 +811,34 @@ export const roomService = {
       throw err;
     }
 
-    // Ensure gameState exists
-    if (!room.gameState) {
-      room.gameState = {
-        turnNumber: 1,
-        activePlayerId: room.players[0].playerId,
-        activePlayerIndex: 0,
-        isBookFlipping: false,
-        lastFlip: null,
-        history: []
-      };
+    // Match Lifecycle Verification (Task 11)
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error(`Match is ${room.status.toLowerCase()}. No further actions can be taken.`);
+      err.statusCode = 400;
+      throw err;
     }
 
-    // If activePlayerId is not set, initialize to first player
-    if (!room.gameState.activePlayerId) {
-      room.gameState.activePlayerId = room.players[0].playerId;
-      room.gameState.activePlayerIndex = 0;
+    // Auto-transition from STARTING to PLAYING when gameplay begins
+    if (room.status === ROOM_STATUS.STARTING || room.status === ROOM_STATUS.READY) {
+      room.status = ROOM_STATUS.PLAYING;
+    }
+
+    // Ensure gameState and turn order exist
+    if (!room.gameState || !room.gameState.turnOrder || room.gameState.turnOrder.length === 0) {
+      TurnService.initializeMatchTurns(room);
+    }
+
+    const currentParticipant = room.players.find((p) => p.playerId === playerId);
+    if (!currentParticipant) {
+      const err = new Error('Player is not in this room.');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (currentParticipant.isEliminated) {
+      const err = new Error('Eliminated players cannot open the magical book.');
+      err.statusCode = 403;
+      throw err;
     }
 
     // 1. Turn Validation: Only active player can flip the book
@@ -806,7 +850,16 @@ export const roomService = {
       throw err;
     }
 
-    // 2. Concurrency Lock: Prevent duplicate requests while flipping
+    // 2. Turn Phase Validation: Prevent duplicate book opening on the same turn
+    if (room.gameState.turnPhase && room.gameState.turnPhase !== 'AWAITING_BOOK') {
+      const err = new Error(
+        'The book has already been opened for this turn. Awaiting action completion.'
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Concurrency Lock: Prevent duplicate requests while flipping
     if (room.gameState.isBookFlipping) {
       const err = new Error('The magical book is already flipping! Please wait for the current result.');
       err.statusCode = 409;
@@ -817,10 +870,9 @@ export const roomService = {
     room.gameState.isBookFlipping = true;
 
     try {
-      const currentParticipant = room.players.find((p) => p.playerId === playerId) || { nickname: 'Warrior' };
       const currentTurnNumber = room.gameState.turnNumber || 1;
 
-      // 3. Cryptographic Draw using room.bookPageCount
+      // 4. Cryptographic Draw using room.bookPageCount
       const outcome = BookEngine.drawPage(
         room.bookPageCount,
         playerId,
@@ -832,22 +884,61 @@ export const roomService = {
         outcome.requestId = requestId;
       }
 
-      // 4. Update Game State & History
-      room.gameState.lastFlip = outcome;
-      if (!Array.isArray(room.gameState.history)) {
-        room.gameState.history = [];
-      }
-      room.gameState.history.unshift(outcome);
-      if (room.gameState.history.length > 50) {
-        room.gameState.history = room.gameState.history.slice(0, 50);
-      }
+      // 5. Authoritatively determine eligible action (Task 11)
+      const eligibleAction = TurnService.determineEligibleAction(
+        currentParticipant,
+        outcome.targetRow,
+        outcome.isOdd
+      );
 
-      // 5. Advance Turn Management (round-robin rotation)
-      const currentIndex = room.players.findIndex((p) => p.playerId === playerId);
-      const nextIndex = (currentIndex + 1) % room.players.length;
-      room.gameState.activePlayerIndex = nextIndex;
-      room.gameState.activePlayerId = room.players[nextIndex].playerId;
-      room.gameState.turnNumber = currentTurnNumber + 1;
+      outcome.eligibleAction = eligibleAction;
+      outcome.actionLabel = outcome.isOdd ? `ROW ${outcome.targetRow}` : 'NO ACTION';
+      room.gameState.lastFlip = outcome;
+
+      let turnAdvanced = false;
+      let nextTurn = null;
+
+      // 6. Handle NO ACTION (Even final digit or eliminated row)
+      if (eligibleAction.type === 'NO_ACTION') {
+        // Record in Turn History
+        TurnService.recordTurnHistory(room, {
+          turnNumber: currentTurnNumber,
+          turnId: room.gameState.currentTurn?.turnId,
+          playerId,
+          nickname: currentParticipant.nickname,
+          pageNumber: outcome.pageNumber,
+          targetRow: outcome.targetRow,
+          isOdd: outcome.isOdd,
+          actionType: 'NO_ACTION',
+          description: eligibleAction.description
+        });
+
+        // If policy is AUTO_ADVANCE, immediately advance to next alive player
+        if (GAME_RULES_CONFIG.noActionPolicy === 'AUTO_ADVANCE') {
+          nextTurn = TurnService.advanceToNextTurn(room);
+          turnAdvanced = true;
+        } else {
+          room.gameState.turnPhase = 'AWAITING_ACTION';
+          if (room.gameState.currentTurn) {
+            room.gameState.currentTurn.phase = 'AWAITING_ACTION';
+            room.gameState.currentTurn.eligibleAction = eligibleAction;
+          }
+        }
+      } else {
+        // Odd digit with eligible construction or combat action
+        room.gameState.turnPhase = 'AWAITING_ACTION';
+        if (!room.gameState.currentTurn) {
+          room.gameState.currentTurn = {
+            turnId: `turn_${currentTurnNumber}_${Date.now()}`,
+            turnNumber: currentTurnNumber,
+            playerId,
+            playerNickname: currentParticipant.nickname
+          };
+        }
+        room.gameState.currentTurn.phase = 'AWAITING_ACTION';
+        room.gameState.currentTurn.bookOutcome = outcome;
+        room.gameState.currentTurn.eligibleAction = eligibleAction;
+      }
 
       // Release lock
       room.gameState.isBookFlipping = false;
@@ -858,10 +949,16 @@ export const roomService = {
       }
 
       logger.info(
-        `[RoomService] Book opened in ${cleanCode}: Page ${outcome.pageNumber} (${outcome.actionLabel}) by ${currentParticipant.nickname}. Next turn: ${room.players[nextIndex].nickname}`
+        `[RoomService] Book opened in ${cleanCode}: Page ${outcome.pageNumber} (${outcome.actionLabel}) by ${currentParticipant.nickname}. Eligible: ${eligibleAction.type}. Turn advanced: ${turnAdvanced}`
       );
 
-      return { room: sanitizeRoom(room), outcome };
+      return {
+        room: sanitizeRoom(room),
+        outcome,
+        eligibleAction,
+        turnAdvanced,
+        nextTurn
+      };
     } catch (err) {
       room.gameState.isBookFlipping = false;
       if (isDbConnected) {
@@ -898,9 +995,31 @@ export const roomService = {
       throw err;
     }
 
+    // Match Lifecycle Verification (Task 11)
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error(`Match is ${room.status.toLowerCase()}. No further actions accepted.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
     const player = room.players.find((p) => p.playerId === playerId);
     if (!player) {
       const err = new Error('Player is not in this room.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    if (player.isEliminated) {
+      const err = new Error('Eliminated players cannot submit drawings.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // Active Player Turn Check
+    if (room.gameState?.activePlayerId && room.gameState.activePlayerId !== playerId) {
+      const activePlayer = room.players.find((p) => p.playerId === room.gameState.activePlayerId);
+      const activeNickname = activePlayer ? activePlayer.nickname : 'another warrior';
+      const err = new Error(`It is not your turn! Currently waiting for ${activeNickname}'s turn.`);
       err.statusCode = 403;
       throw err;
     }
@@ -910,6 +1029,18 @@ export const roomService = {
       const err = new Error(`Invalid row station ${rowNumber}. Must be 1, 3, 5, 7, or 9.`);
       err.statusCode = 400;
       throw err;
+    }
+
+    // Target row match check against currentTurn eligible action
+    const currentTurn = room.gameState?.currentTurn;
+    if (currentTurn?.eligibleAction && currentTurn.eligibleAction.targetRow !== null) {
+      if (currentTurn.eligibleAction.targetRow !== targetRow) {
+        const err = new Error(
+          `You can only draw on Row ${currentTurn.eligibleAction.targetRow} selected by the Magical Book.`
+        );
+        err.statusCode = 400;
+        throw err;
+      }
     }
 
     const validStages = ['HEAD', 'BODY', 'GUN', 'BULLET'];
@@ -1064,13 +1195,30 @@ export const roomService = {
       }
     }
 
+    // 4. Record Turn History & Advance Turn (Task 11)
+    TurnService.recordTurnHistory(room, {
+      turnNumber: room.gameState?.turnNumber || 1,
+      turnId: currentTurn?.turnId,
+      playerId,
+      nickname: player.nickname,
+      pageNumber: currentTurn?.bookOutcome?.pageNumber || null,
+      targetRow,
+      isOdd: true,
+      actionType: 'DRAW',
+      stage: cleanStage,
+      description: `Completed ${cleanStage} on Row ${targetRow}.`
+    });
+
+    const nextTurn = TurnService.advanceToNextTurn(room);
+
     if (isDbConnected) {
       room.markModified('players');
+      room.markModified('gameState');
       await room.save();
     }
 
     logger.info(
-      `[RoomService] Drawing submitted: ${player.nickname} completed ${cleanStage} on Row ${targetRow} in room ${cleanCode}. Next stage: ${nextStage}`
+      `[RoomService] Drawing submitted: ${player.nickname} completed ${cleanStage} on Row ${targetRow} in room ${cleanCode}. Next stage: ${nextStage}. Turn advanced: ${Boolean(nextTurn)}`
     );
 
     return {
@@ -1080,7 +1228,8 @@ export const roomService = {
       stage: cleanStage,
       nextStage,
       drawing: storedDrawing,
-      rowState
+      rowState,
+      nextTurn
     };
   },
 
@@ -1232,8 +1381,8 @@ export const roomService = {
       throw err;
     }
 
-    if (room.status === ROOM_STATUS.FINISHED) {
-      const err = new Error('Match has already concluded. Victory declared.');
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error(`Match is ${room.status.toLowerCase()}. No further actions accepted.`);
       err.statusCode = 400;
       throw err;
     }
@@ -1245,6 +1394,23 @@ export const roomService = {
       const err = new Error(`Not your turn! Waiting for ${activeNickname} to act.`);
       err.statusCode = 403;
       throw err;
+    }
+
+    // Target row match check against currentTurn eligible action
+    const currentTurn = room.gameState?.currentTurn;
+    if (currentTurn?.eligibleAction && currentTurn.eligibleAction.targetRow !== null) {
+      if (currentTurn.eligibleAction.targetRow !== parseInt(attackerRow, 10)) {
+        const err = new Error(
+          `Attacking row must match Row ${currentTurn.eligibleAction.targetRow} selected by the Magical Book.`
+        );
+        err.statusCode = 400;
+        throw err;
+      }
+      if (!currentTurn.eligibleAction.canAttack) {
+        const err = new Error(`Row ${attackerRow} is not eligible to attack.`);
+        err.statusCode = 400;
+        throw err;
+      }
     }
 
     // 2. Attacker Validation
@@ -1411,20 +1577,21 @@ export const roomService = {
     }
     room.gameState.selectedTarget = null; // Clear active target
 
-    // F. Turn Rotation (if match continues)
-    if (!matchFinished && remainingAlivePlayers.length > 1) {
-      const currentIndex = room.players.findIndex((p) => p.playerId === playerId);
-      let nextIndex = (currentIndex + 1) % room.players.length;
-      let count = 0;
-      // Skip eliminated players in round-robin rotation
-      while (room.players[nextIndex].isEliminated && count < room.players.length) {
-        nextIndex = (nextIndex + 1) % room.players.length;
-        count++;
-      }
-      room.gameState.activePlayerIndex = nextIndex;
-      room.gameState.activePlayerId = room.players[nextIndex].playerId;
-      room.gameState.turnNumber = (room.gameState.turnNumber || 1) + 1;
-    }
+    // F. Record in Turn History & Advance Turn (Task 11)
+    TurnService.recordTurnHistory(room, {
+      turnNumber: room.gameState?.turnNumber || 1,
+      turnId: currentTurn?.turnId,
+      playerId,
+      nickname: attacker.nickname,
+      pageNumber: currentTurn?.bookOutcome?.pageNumber || null,
+      targetRow: aRowNum,
+      isOdd: true,
+      actionType: 'ATTACK',
+      attackDetails: shotEvent,
+      description: `Fired from Row ${aRowNum} at ${targetPlayer.nickname}'s Row ${tRowNum} (${shotEvent.targetRowEliminated ? 'Eliminated' : 'Hit'}).`
+    });
+
+    const nextTurn = TurnService.advanceToNextTurn(room);
 
     if (isDbConnected) {
       room.markModified('players');
@@ -1438,7 +1605,70 @@ export const roomService = {
 
     return {
       room: sanitizeRoom(room),
-      shotEvent
+      shotEvent,
+      nextTurn
+    };
+  },
+
+  /**
+   * Passes the active player's turn (Task 11).
+   */
+  passTurn: async ({ code, playerId }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = isDbConnected ? await Room.findOne({ code: cleanCode }) : inMemoryRooms.get(cleanCode);
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error(`Match is ${room.status.toLowerCase()}.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (room.gameState?.activePlayerId && room.gameState.activePlayerId !== playerId) {
+      const err = new Error('It is not your turn to pass.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const player = room.players.find((p) => p.playerId === playerId);
+    if (!player || player.isEliminated) {
+      const err = new Error('Eliminated players cannot pass turns.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const currentTurn = room.gameState?.currentTurn;
+
+    TurnService.recordTurnHistory(room, {
+      turnNumber: room.gameState?.turnNumber || 1,
+      turnId: currentTurn?.turnId,
+      playerId,
+      nickname: player.nickname,
+      pageNumber: currentTurn?.bookOutcome?.pageNumber || null,
+      targetRow: currentTurn?.eligibleAction?.targetRow || null,
+      isOdd: currentTurn?.bookOutcome?.isOdd || false,
+      actionType: 'PASS',
+      description: `${player.nickname} passed their turn.`
+    });
+
+    const nextTurn = TurnService.advanceToNextTurn(room);
+
+    if (isDbConnected) {
+      room.markModified('gameState');
+      await room.save();
+    }
+
+    logger.info(`[RoomService] Player ${player.nickname} passed turn in room ${cleanCode}.`);
+
+    return {
+      room: sanitizeRoom(room),
+      nextTurn
     };
   },
 

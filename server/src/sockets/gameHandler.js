@@ -46,7 +46,7 @@ export const registerGameHandlers = (io, socket) => {
       io.to(cleanCode).emit('book:opening', openingPayload);
 
       // 2. Perform authoritative cryptographic draw and turn advancement
-      const { room, outcome } = await roomService.openBook({
+      const { room, outcome, eligibleAction, turnAdvanced, nextTurn } = await roomService.openBook({
         code: cleanCode,
         playerId: targetPlayerId,
         requestId
@@ -56,16 +56,45 @@ export const registerGameHandlers = (io, socket) => {
       const resultPayload = {
         roomCode: cleanCode,
         outcome,
+        eligibleAction,
         room
       };
 
       io.to(cleanCode).emit('BOOK_RESULT', resultPayload);
       io.to(cleanCode).emit('book:result', resultPayload);
+
+      // Task 11: Turn lifecycle events
+      if (turnAdvanced) {
+        io.to(cleanCode).emit('TURN_COMPLETED', {
+          roomCode: cleanCode,
+          turnNumber: (room.gameState?.turnNumber || 1) - 1,
+          playerNickname: outcome.nickname,
+          actionType: 'NO_ACTION',
+          room
+        });
+        io.to(cleanCode).emit('TURN_STARTED', {
+          roomCode: cleanCode,
+          turnNumber: room.gameState?.turnNumber || 1,
+          activePlayerId: room.gameState?.activePlayerId,
+          currentTurn: room.gameState?.currentTurn,
+          room
+        });
+      } else {
+        io.to(cleanCode).emit('TURN_UPDATED', {
+          roomCode: cleanCode,
+          turnNumber: room.gameState?.turnNumber || 1,
+          activePlayerId: room.gameState?.activePlayerId,
+          currentTurn: room.gameState?.currentTurn,
+          eligibleAction,
+          room
+        });
+      }
+
       io.to(cleanCode).emit('room:state', room);
       io.to(cleanCode).emit('ROOM_STATE', room);
 
       if (typeof callback === 'function') {
-        callback({ success: true, outcome, room });
+        callback({ success: true, outcome, eligibleAction, turnAdvanced, room });
       }
     } catch (err) {
       logger.error(`[Socket.IO] Error opening book for socket ${socket.id}:`, err.message);
@@ -134,6 +163,37 @@ export const registerGameHandlers = (io, socket) => {
       io.to(cleanCode).emit('drawing:updated', updatePayload);
       io.to(cleanCode).emit('DRAWING_STAGE_COMPLETED', updatePayload);
       io.to(cleanCode).emit('drawing:stage_completed', updatePayload);
+
+      // Task 11: Ammunition event when bullet is drawn
+      if (result.stage === 'BULLET') {
+        io.to(cleanCode).emit('AMMUNITION_UPDATED', {
+          roomCode: cleanCode,
+          playerId: targetPlayerId,
+          rowNumber: result.rowNumber,
+          bulletCount: result.rowState.bulletCount,
+          bullets: result.rowState.bullets,
+          room: result.room
+        });
+      }
+
+      // Task 11: Turn transition events
+      io.to(cleanCode).emit('TURN_COMPLETED', {
+        roomCode: cleanCode,
+        turnNumber: (result.room.gameState?.turnNumber || 1) - 1,
+        actionType: 'DRAW',
+        stage: result.stage,
+        rowNumber: result.rowNumber,
+        room: result.room
+      });
+
+      io.to(cleanCode).emit('TURN_STARTED', {
+        roomCode: cleanCode,
+        turnNumber: result.room.gameState?.turnNumber || 1,
+        activePlayerId: result.room.gameState?.activePlayerId,
+        currentTurn: result.room.gameState?.currentTurn,
+        room: result.room
+      });
+
       io.to(cleanCode).emit('room:state', result.room);
       io.to(cleanCode).emit('ROOM_STATE', result.room);
 
@@ -281,6 +341,24 @@ export const registerGameHandlers = (io, socket) => {
         shotEvent: result.shotEvent
       });
 
+      // Task 11: Player eliminated broadcast
+      if (result.shotEvent.targetPlayerEliminated) {
+        io.to(cleanCode).emit('PLAYER_ELIMINATED', {
+          roomCode: cleanCode,
+          targetPlayerId: result.shotEvent.targetPlayerId,
+          targetNickname: result.shotEvent.targetNickname,
+          room: result.room
+        });
+      }
+
+      io.to(cleanCode).emit('AMMUNITION_UPDATED', {
+        roomCode: cleanCode,
+        playerId: activePlayerId,
+        rowNumber: attackerRow,
+        bulletCount: result.shotEvent.remainingBullets,
+        room: result.room
+      });
+
       io.to(cleanCode).emit('COMBAT_STATE_UPDATED', shotPayload);
       io.to(cleanCode).emit('combat:state_updated', shotPayload);
 
@@ -293,6 +371,23 @@ export const registerGameHandlers = (io, socket) => {
         };
         io.to(cleanCode).emit('MATCH_FINISHED', victoryPayload);
         io.to(cleanCode).emit('combat:match_finished', victoryPayload);
+      } else {
+        // Turn transition events
+        io.to(cleanCode).emit('TURN_COMPLETED', {
+          roomCode: cleanCode,
+          turnNumber: (result.room.gameState?.turnNumber || 1) - 1,
+          actionType: 'ATTACK',
+          shotEvent: result.shotEvent,
+          room: result.room
+        });
+
+        io.to(cleanCode).emit('TURN_STARTED', {
+          roomCode: cleanCode,
+          turnNumber: result.room.gameState?.turnNumber || 1,
+          activePlayerId: result.room.gameState?.activePlayerId,
+          currentTurn: result.room.gameState?.currentTurn,
+          room: result.room
+        });
       }
 
       io.to(cleanCode).emit('room:state', result.room);
@@ -320,6 +415,106 @@ export const registerGameHandlers = (io, socket) => {
   socket.on('FIRE_SHOT', handleFireShot);
   socket.on('combat:fire', handleFireShot);
   socket.on('FIRE_COMBAT_SHOT', handleFireShot);
+
+  /**
+   * Client voluntarily passes active turn (Task 11)
+   */
+  const handlePassTurn = async (payload, callback) => {
+    try {
+      const { roomCode, playerId } = payload || {};
+      const cleanCode = (roomCode || socket.data?.roomCode)?.toUpperCase().trim();
+      const activePlayerId = playerId || socket.data?.playerId;
+
+      if (!cleanCode || !activePlayerId) {
+        const errorMsg = 'roomCode and playerId are required to pass turn.';
+        socket.emit('TURN_ERROR', { message: errorMsg });
+        if (typeof callback === 'function') {
+          return callback({ success: false, message: errorMsg });
+        }
+        return;
+      }
+
+      const result = await roomService.passTurn({
+        code: cleanCode,
+        playerId: activePlayerId
+      });
+
+      io.to(cleanCode).emit('TURN_COMPLETED', {
+        roomCode: cleanCode,
+        turnNumber: (result.room.gameState?.turnNumber || 1) - 1,
+        actionType: 'PASS',
+        playerId: activePlayerId,
+        room: result.room
+      });
+
+      io.to(cleanCode).emit('TURN_STARTED', {
+        roomCode: cleanCode,
+        turnNumber: result.room.gameState?.turnNumber || 1,
+        activePlayerId: result.room.gameState?.activePlayerId,
+        currentTurn: result.room.gameState?.currentTurn,
+        room: result.room
+      });
+
+      io.to(cleanCode).emit('room:state', result.room);
+      io.to(cleanCode).emit('ROOM_STATE', result.room);
+
+      if (typeof callback === 'function') {
+        callback({ success: true, result });
+      }
+    } catch (err) {
+      logger.error(`[Socket.IO] Error passing turn for socket ${socket.id}:`, err.message);
+      socket.emit('TURN_ERROR', { message: err.message, statusCode: err.statusCode || 400 });
+      if (typeof callback === 'function') {
+        callback({ success: false, message: err.message });
+      }
+    }
+  };
+
+  socket.on('PASS_TURN', handlePassTurn);
+  socket.on('turn:pass', handlePassTurn);
+
+  /**
+   * Battlefield page initialized, transition to PLAYING (Task 11)
+   */
+  const handleStartPlaying = async (payload, callback) => {
+    try {
+      const { roomCode } = payload || {};
+      const cleanCode = (roomCode || socket.data?.roomCode)?.toUpperCase().trim();
+
+      if (!cleanCode) {
+        if (typeof callback === 'function') {
+          return callback({ success: false, message: 'roomCode is required.' });
+        }
+        return;
+      }
+
+      const room = await roomService.startPlaying({ code: cleanCode });
+
+      io.to(cleanCode).emit('MATCH_PLAYING', { roomCode: cleanCode, room });
+      io.to(cleanCode).emit('TURN_STARTED', {
+        roomCode: cleanCode,
+        turnNumber: room.gameState?.turnNumber || 1,
+        activePlayerId: room.gameState?.activePlayerId,
+        currentTurn: room.gameState?.currentTurn,
+        room
+      });
+
+      io.to(cleanCode).emit('room:state', room);
+      io.to(cleanCode).emit('ROOM_STATE', room);
+
+      if (typeof callback === 'function') {
+        callback({ success: true, room });
+      }
+    } catch (err) {
+      logger.error(`[Socket.IO] Error starting playing for socket ${socket.id}:`, err.message);
+      if (typeof callback === 'function') {
+        callback({ success: false, message: err.message });
+      }
+    }
+  };
+
+  socket.on('START_PLAYING', handleStartPlaying);
+  socket.on('game:start_playing', handleStartPlaying);
 
   socket.on('game:ping', (timestamp, callback) => {
     if (typeof callback === 'function') {

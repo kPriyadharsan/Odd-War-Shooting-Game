@@ -13,6 +13,7 @@ export const CombatActionPanel = ({
   targetOpponent,
   onFireShot,
   onClearTarget,
+  onPassTurn,
   isFiring = false,
   isMyTurn = true,
   combatError = null,
@@ -126,6 +127,17 @@ export const CombatActionPanel = ({
                 : 'SELECT TARGET'}
             </span>
           </button>
+
+          {/* Pass Turn Button (Task 11) */}
+          {isMyTurn && typeof onPassTurn === 'function' && (
+            <button
+              type="button"
+              onClick={onPassTurn}
+              className="inline-flex items-center justify-center px-3.5 py-3 rounded-xl font-mono text-xs font-semibold border border-[#D5CFC3] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-[#5C6069] shadow-xs cursor-pointer transition-colors"
+            >
+              Pass Turn
+            </button>
+          )}
         </div>
       </div>
 

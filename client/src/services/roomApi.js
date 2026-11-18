@@ -150,5 +150,26 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to fire shot');
     return data.data;
+  },
+
+  passTurn: async ({ code, playerId }) => {
+    const res = await fetch(`${API_BASE}/${code}/turn/pass`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to pass turn');
+    return data.data;
+  },
+
+  startPlaying: async ({ code }) => {
+    const res = await fetch(`${API_BASE}/${code}/play`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to start playing');
+    return data.data;
   }
 };
