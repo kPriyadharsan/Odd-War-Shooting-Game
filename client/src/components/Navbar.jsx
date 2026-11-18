@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, User } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket.js';
 
 export const Navbar = () => {
@@ -8,8 +8,8 @@ export const Navbar = () => {
   const { isConnected, latency } = useSocket();
 
   const isHome = location.pathname === '/';
+  const isProfile = location.pathname === '/profile-setup';
   const isDesignSystem = location.pathname === '/design-system';
-  const isSystem = location.pathname === '/system';
 
   const handleHowToPlay = (e) => {
     if (isHome) {
@@ -51,6 +51,18 @@ export const Navbar = () => {
               Home
             </Link>
 
+            <Link
+              to="/profile-setup"
+              className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                isProfile
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Profile</span>
+            </Link>
+
             {isHome ? (
               <a
                 href="#how-it-works"
@@ -70,24 +82,13 @@ export const Navbar = () => {
 
             <Link
               to="/design-system"
-              className={`px-2.5 py-1.5 rounded-lg border transition-all ${
+              className={`hidden md:inline-block px-2.5 py-1.5 rounded-lg border transition-all ${
                 isDesignSystem
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
                   : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
               }`}
             >
               Design System
-            </Link>
-
-            <Link
-              to="/system"
-              className={`hidden md:inline-block px-2.5 py-1.5 rounded-lg border transition-all ${
-                isSystem
-                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
-                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
-              }`}
-            >
-              Status
             </Link>
           </nav>
 

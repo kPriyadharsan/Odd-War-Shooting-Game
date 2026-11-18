@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Play, BookOpen, Target, Sparkles, ArrowRight } from 'lucide-react';
 import {
@@ -10,11 +11,14 @@ import {
 import { HeroNotebookIllustration } from '../components/landing/HeroNotebookIllustration.jsx';
 import { HowItWorksStepCard } from '../components/landing/HowItWorksStepCard.jsx';
 import { MultiplayerFeatureGrid } from '../components/landing/MultiplayerFeatureGrid.jsx';
-import { ComingSoonModal } from '../components/landing/ComingSoonModal.jsx';
 
 export const LandingPage = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
+
+  const handleStartPlaying = () => {
+    navigate('/profile-setup');
+  };
 
   const scrollToHowItWorks = () => {
     const el = document.getElementById('how-it-works');
@@ -72,7 +76,7 @@ export const LandingPage = () => {
                   variant="primary"
                   size="lg"
                   icon={Play}
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={handleStartPlaying}
                   className="w-full sm:w-auto"
                 >
                   Play Now
@@ -183,7 +187,7 @@ export const LandingPage = () => {
               size="lg"
               icon={ArrowRight}
               iconPosition="right"
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleStartPlaying}
               className="px-8 text-base shadow-sketch-dark"
             >
               Start Playing
@@ -209,12 +213,6 @@ export const LandingPage = () => {
             &copy; {new Date().getFullYear()} ODD WARS. All rights reserved.
           </div>
         </footer>
-
-        {/* Coming Soon Modal instance */}
-        <ComingSoonModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-        />
       </div>
     </NotebookBackground>
   );
