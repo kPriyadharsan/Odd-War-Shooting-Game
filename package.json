@@ -1,0 +1,29 @@
+{
+  "name": "odd-wars",
+  "version": "1.0.0",
+  "description": "ODD WARS — Real-Time Multiplayer Online Game",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "build:client": "npm --prefix client run build",
+    "start:server": "npm --prefix server start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "multiplayer",
+    "socket.io",
+    "express",
+    "react",
+    "game",
+    "odd-wars"
+  ],
+  "author": "ODD WARS Development Team",
+  "license": "MIT"
+}
