@@ -62,9 +62,9 @@ export const createTerritory = (slotIndex) => ({
     },
     bulletCount: 0,
     bullets: [
-      { slot: 1, drawn: false, drawing: null },
-      { slot: 2, drawn: false, drawing: null },
-      { slot: 3, drawn: false, drawing: null }
+      { slot: 1, state: 'EMPTY', drawn: false, drawing: null },
+      { slot: 2, state: 'EMPTY', drawn: false, drawing: null },
+      { slot: 3, state: 'EMPTY', drawn: false, drawing: null }
     ],
     isEliminated: false
   }))
@@ -1035,24 +1035,27 @@ export const roomService = {
       nextStage = 'BULLET';
     } else if (cleanStage === 'BULLET') {
       rowState.drawings.BULLET = storedDrawing;
-      const count = (rowState.bulletCount || 0) + 1;
-      rowState.bulletCount = Math.min(3, count);
-      rowState.status = 'BULLETS_LOADED';
 
       if (!Array.isArray(rowState.bullets)) {
         rowState.bullets = [
-          { slot: 1, drawn: false, drawing: null },
-          { slot: 2, drawn: false, drawing: null },
-          { slot: 3, drawn: false, drawing: null }
+          { slot: 1, state: 'EMPTY', drawn: false, drawing: null },
+          { slot: 2, state: 'EMPTY', drawn: false, drawing: null },
+          { slot: 3, state: 'EMPTY', drawn: false, drawing: null }
         ];
       }
 
-      if (rowState.bullets[count - 1]) {
-        rowState.bullets[count - 1].drawn = true;
-        rowState.bullets[count - 1].drawing = storedDrawing;
+      const emptySlot = rowState.bullets.find((b) => b.state === 'EMPTY') || rowState.bullets[0];
+      if (emptySlot) {
+        emptySlot.state = 'LOADED';
+        emptySlot.drawn = true;
+        emptySlot.drawing = storedDrawing;
       }
 
-      if (rowState.bulletCount < 3) {
+      rowState.bulletCount = rowState.bullets.filter((b) => b.state === 'LOADED').length;
+      rowState.status = 'BULLETS_LOADED';
+
+      const hasMoreEmptySlots = rowState.bullets.some((b) => b.state === 'EMPTY');
+      if (hasMoreEmptySlots) {
         rowState.currentStage = 'BULLET';
         nextStage = 'BULLET';
       } else {
@@ -1078,6 +1081,364 @@ export const roomService = {
       nextStage,
       drawing: storedDrawing,
       rowState
+    };
+  },
+
+  /**
+   * Selects an attack target for the active player (Task 10).
+   * Validates active player turn, attacker row eligibility, opponent ownership, and row availability.
+   */
+  selectCombatTarget: async ({ code, playerId, attackerRow, targetPlayerId, targetRow }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = isDbConnected ? await Room.findOne({ code: cleanCode }) : inMemoryRooms.get(cleanCode);
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.FINISHED || room.status === ROOM_STATUS.CANCELLED) {
+      const err = new Error('Match has already ended.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Active player turn check
+    if (room.gameState?.activePlayerId && room.gameState.activePlayerId !== playerId) {
+      const activePlayer = room.players.find((p) => p.playerId === room.gameState.activePlayerId);
+      const activeNickname = activePlayer ? activePlayer.nickname : 'another player';
+      const err = new Error(`Not your turn! Currently waiting for ${activeNickname}'s turn.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // Attacker player & row validation
+    const attacker = room.players.find((p) => p.playerId === playerId);
+    if (!attacker) {
+      const err = new Error('Attacking player not found in room.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (attacker.isEliminated) {
+      const err = new Error('Eliminated players cannot target or attack.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const aRowNum = parseInt(attackerRow, 10);
+    const attackerRowState = attacker.territory?.rowStates?.find((r) => r.rowNumber === aRowNum);
+    if (!attackerRowState) {
+      const err = new Error(`Attacker row ${attackerRow} not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+    if (attackerRowState.isEliminated) {
+      const err = new Error(`Cannot attack from Row ${aRowNum}: row has been eliminated.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Ammunition check
+    const hasLoadedBullet =
+      Array.isArray(attackerRowState.bullets) &&
+      attackerRowState.bullets.some((b) => b.state === 'LOADED');
+    if (!hasLoadedBullet) {
+      const err = new Error(`Row ${aRowNum} has no loaded ammunition to attack.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Target validation
+    if (targetPlayerId === playerId) {
+      const err = new Error('Friendly fire blocked! You cannot attack your own territory.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const targetPlayer = room.players.find((p) => p.playerId === targetPlayerId);
+    if (!targetPlayer) {
+      const err = new Error('Target opponent not found in room.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (targetPlayer.isEliminated) {
+      const err = new Error('Target opponent is already defeated.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const tRowNum = parseInt(targetRow, 10);
+    if (!TERRITORY_ROWS.includes(tRowNum)) {
+      const err = new Error(`Invalid target row ${targetRow}. Must be 1, 3, 5, 7, or 9.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const targetRowState = targetPlayer.territory?.rowStates?.find((r) => r.rowNumber === tRowNum);
+    if (!targetRowState) {
+      const err = new Error(`Target row ${tRowNum} not found on opponent territory.`);
+      err.statusCode = 404;
+      throw err;
+    }
+    if (targetRowState.isEliminated) {
+      const err = new Error(
+        `Row ${tRowNum} of ${targetPlayer.nickname} is already eliminated! Choose an active row.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Set selection in game state
+    if (!room.gameState) room.gameState = {};
+    room.gameState.selectedTarget = {
+      attackerPlayerId: playerId,
+      attackerRow: aRowNum,
+      targetPlayerId,
+      targetNickname: targetPlayer.nickname,
+      targetRow: tRowNum,
+      timestamp: new Date().toISOString()
+    };
+
+    if (isDbConnected) {
+      room.markModified('gameState');
+      await room.save();
+    }
+
+    logger.info(
+      `[CombatService] ${attacker.nickname} targeted ${targetPlayer.nickname}'s Row ${tRowNum} from Row ${aRowNum} in room ${cleanCode}`
+    );
+
+    return {
+      room: sanitizeRoom(room),
+      selectedTarget: room.gameState.selectedTarget
+    };
+  },
+
+  /**
+   * Fires a shot from an armed row station at an opponent row (Task 10).
+   * Validates combat readiness, consumes 1 loaded bullet, eliminates the target row,
+   * evaluates player elimination and victory conditions.
+   */
+  fireShot: async ({ code, playerId, actionId, attackerRow, targetPlayerId, targetRow }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = isDbConnected ? await Room.findOne({ code: cleanCode }) : inMemoryRooms.get(cleanCode);
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.FINISHED) {
+      const err = new Error('Match has already concluded. Victory declared.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 1. Turn Validation
+    if (room.gameState?.activePlayerId && room.gameState.activePlayerId !== playerId) {
+      const activePlayer = room.players.find((p) => p.playerId === room.gameState.activePlayerId);
+      const activeNickname = activePlayer ? activePlayer.nickname : 'another warrior';
+      const err = new Error(`Not your turn! Waiting for ${activeNickname} to act.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2. Attacker Validation
+    const attacker = room.players.find((p) => p.playerId === playerId);
+    if (!attacker) {
+      const err = new Error('Attacking player not found in room.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (attacker.isEliminated) {
+      const err = new Error('Eliminated players cannot fire.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const aRowNum = parseInt(attackerRow, 10);
+    const attackerRowState = attacker.territory?.rowStates?.find((r) => r.rowNumber === aRowNum);
+    if (!attackerRowState) {
+      const err = new Error(`Attacking row ${attackerRow} not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+    if (attackerRowState.isEliminated) {
+      const err = new Error(`Row ${aRowNum} has been eliminated and cannot attack.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Construction stage validation: HEAD, BODY, GUN must be drawn
+    const hasHead = Boolean(attackerRowState.drawings?.HEAD);
+    const hasBody = Boolean(attackerRowState.drawings?.BODY);
+    const hasGun = Boolean(attackerRowState.drawings?.GUN);
+    if (!hasHead || !hasBody || !hasGun) {
+      const err = new Error(
+        `Row ${aRowNum} is not combat-ready! Must complete HEAD, BODY, and GUN before firing.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Ammunition check: find first LOADED bullet
+    if (!Array.isArray(attackerRowState.bullets)) {
+      const err = new Error(`Row ${aRowNum} has no ammunition loaded.`);
+      err.statusCode = 400;
+      throw err;
+    }
+    const loadedBulletSlot = attackerRowState.bullets.find((b) => b.state === 'LOADED');
+    if (!loadedBulletSlot) {
+      const err = new Error(`Cannot fire from Row ${aRowNum}: All ammunition has been expended.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Target Validation
+    if (targetPlayerId === playerId) {
+      const err = new Error('Friendly fire blocked! You cannot attack your own territory.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const targetPlayer = room.players.find((p) => p.playerId === targetPlayerId);
+    if (!targetPlayer) {
+      const err = new Error('Target opponent not found in room.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (targetPlayer.isEliminated) {
+      const err = new Error(`${targetPlayer.nickname} has already been eliminated from this match.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const tRowNum = parseInt(targetRow, 10);
+    if (!TERRITORY_ROWS.includes(tRowNum)) {
+      const err = new Error(`Invalid target row station ${targetRow}. Must be 1, 3, 5, 7, or 9.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const targetRowState = targetPlayer.territory?.rowStates?.find((r) => r.rowNumber === tRowNum);
+    if (!targetRowState) {
+      const err = new Error(`Target row ${tRowNum} not found on ${targetPlayer.nickname}'s territory.`);
+      err.statusCode = 404;
+      throw err;
+    }
+    if (targetRowState.isEliminated) {
+      const err = new Error(
+        `Row ${tRowNum} of ${targetPlayer.nickname} is already eliminated! Target an active station.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 4. Combat Execution & State Transitions
+    // A. Consume 1 loaded bullet (LOADED -> FIRED)
+    loadedBulletSlot.state = 'FIRED';
+    attackerRowState.bulletCount = attackerRowState.bullets.filter((b) => b.state === 'LOADED').length;
+    if (attackerRowState.bulletCount === 0) {
+      attackerRowState.status = 'GUN_DRAWN'; // Needs reload
+    }
+
+    // B. Eliminate Target Row
+    targetRowState.isEliminated = true;
+    targetRowState.status = 'ELIMINATED';
+
+    // C. Check if Target Player is completely eliminated (all 5 rows destroyed)
+    const targetAliveRows = targetPlayer.territory.rowStates.filter((r) => !r.isEliminated);
+    const targetPlayerEliminated = targetAliveRows.length === 0;
+    if (targetPlayerEliminated) {
+      targetPlayer.isEliminated = true;
+      logger.info(
+        `[CombatService] Player ${targetPlayer.nickname} has been fully eliminated from room ${cleanCode}!`
+      );
+    }
+
+    // D. Victory Evaluation
+    const remainingAlivePlayers = room.players.filter((p) => !p.isEliminated);
+    let matchFinished = false;
+    let winnerId = null;
+    let winnerNickname = null;
+
+    if (remainingAlivePlayers.length <= 1) {
+      matchFinished = true;
+      room.status = ROOM_STATUS.FINISHED;
+      if (remainingAlivePlayers.length === 1) {
+        winnerId = remainingAlivePlayers[0].playerId;
+        winnerNickname = remainingAlivePlayers[0].nickname;
+        room.gameState.winnerId = winnerId;
+        room.gameState.winnerNickname = winnerNickname;
+        logger.info(`[CombatService] VICTORY DECLARED in room ${cleanCode}! Winner: ${winnerNickname}`);
+      } else {
+        // Double knock-out / tie
+        room.gameState.winnerId = 'TIE';
+        room.gameState.winnerNickname = 'Tie';
+      }
+    }
+
+    // E. Record Combat Log Event
+    const shotEvent = {
+      actionId: actionId || `shot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      turnNumber: room.gameState.turnNumber || 1,
+      attackerPlayerId: playerId,
+      attackerNickname: attacker.nickname,
+      attackerRow: aRowNum,
+      targetPlayerId,
+      targetNickname: targetPlayer.nickname,
+      targetRow: tRowNum,
+      consumedBulletSlot: loadedBulletSlot.slot,
+      remainingBullets: attackerRowState.bulletCount,
+      targetRowEliminated: true,
+      targetPlayerEliminated,
+      matchFinished,
+      winnerId,
+      winnerNickname,
+      timestamp: new Date().toISOString()
+    };
+
+    if (!Array.isArray(room.gameState.combatLog)) {
+      room.gameState.combatLog = [];
+    }
+    room.gameState.combatLog.unshift(shotEvent);
+    if (room.gameState.combatLog.length > 50) {
+      room.gameState.combatLog = room.gameState.combatLog.slice(0, 50);
+    }
+    room.gameState.selectedTarget = null; // Clear active target
+
+    // F. Turn Rotation (if match continues)
+    if (!matchFinished && remainingAlivePlayers.length > 1) {
+      const currentIndex = room.players.findIndex((p) => p.playerId === playerId);
+      let nextIndex = (currentIndex + 1) % room.players.length;
+      let count = 0;
+      // Skip eliminated players in round-robin rotation
+      while (room.players[nextIndex].isEliminated && count < room.players.length) {
+        nextIndex = (nextIndex + 1) % room.players.length;
+        count++;
+      }
+      room.gameState.activePlayerIndex = nextIndex;
+      room.gameState.activePlayerId = room.players[nextIndex].playerId;
+      room.gameState.turnNumber = (room.gameState.turnNumber || 1) + 1;
+    }
+
+    if (isDbConnected) {
+      room.markModified('players');
+      room.markModified('gameState');
+      await room.save();
+    }
+
+    logger.info(
+      `[CombatService] Shot fired: ${attacker.nickname} (Row ${aRowNum}) eliminated ${targetPlayer.nickname}'s Row ${tRowNum}. Bullets left: ${attackerRowState.bulletCount}. Match finished: ${matchFinished}`
+    );
+
+    return {
+      room: sanitizeRoom(room),
+      shotEvent
     };
   },
 

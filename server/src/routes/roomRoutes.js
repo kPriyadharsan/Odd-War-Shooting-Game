@@ -11,6 +11,8 @@ import {
   startMatch,
   openRoomBook,
   submitRowDrawing,
+  selectCombatTarget,
+  fireCombatShot,
   updateRoomSettings,
   drawRoomBookPage
 } from '../controllers/roomController.js';
@@ -39,6 +41,10 @@ router.post('/:code/book/open', openRoomBook);
 
 // Manual Character Drawing Engine (Task 09)
 router.post('/:code/drawings', submitRowDrawing);
+
+// Combat Engine, Shooting & Row Elimination (Task 10)
+router.post('/:code/combat/target', selectCombatTarget);
+router.post('/:code/combat/fire', fireCombatShot);
 
 // Host settings & Book Engine compatibility
 router.patch('/:code/settings', updateRoomSettings);

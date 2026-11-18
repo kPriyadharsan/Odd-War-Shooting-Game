@@ -188,6 +188,84 @@ class SoundEffectsService {
   }
 
   /**
+   * Sound 6: Gunshot Fire (Sharp pop + low acoustic thud)
+   */
+  playGunshot() {
+    const vol = this.getEffectiveVolume();
+    if (vol <= 0) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+
+      // Pop / snap
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+
+      gain.gain.setValueAtTime(vol * 0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+
+      // Noise crack
+      this.playPaperRustle(now, 0.12, vol * 0.45);
+    } catch (e) {}
+  }
+
+  /**
+   * Sound 7: Row Elimination (Pencil scribble strike-through)
+   */
+  playPencilStrike() {
+    const vol = this.getEffectiveVolume();
+    if (vol <= 0) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      this.playPaperRustle(now, 0.25, vol * 0.6);
+      this.playPaperRustle(now + 0.1, 0.2, vol * 0.5);
+    } catch (e) {}
+  }
+
+  /**
+   * Sound 8: Victory Fanfare
+   */
+  playVictoryFanfare() {
+    const vol = this.getEffectiveVolume();
+    if (vol <= 0) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [261.63, 329.63, 392.0, 523.25, 659.25]; // C4, E4, G4, C5, E5
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+        gain.gain.setValueAtTime(0, now + idx * 0.12);
+        gain.gain.linearRampToValueAtTime(vol * 0.3, now + idx * 0.12 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.6);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.65);
+      });
+    } catch (e) {}
+  }
+
+  /**
    * Helper: Synthesized noise burst for paper flutter
    */
   playPaperRustle(startTime, duration, volume) {

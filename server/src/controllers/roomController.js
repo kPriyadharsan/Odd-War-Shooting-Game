@@ -268,6 +268,69 @@ export const submitRowDrawing = async (req, res, next) => {
 };
 
 /**
+ * Select combat target (Task 10)
+ */
+export const selectCombatTarget = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId, attackerRow, targetPlayerId, targetRow } = req.body;
+
+    if (!code || !playerId || attackerRow === undefined || !targetPlayerId || targetRow === undefined) {
+      return sendError(
+        res,
+        'code, playerId, attackerRow, targetPlayerId, and targetRow are required',
+        400
+      );
+    }
+
+    const result = await roomService.selectCombatTarget({
+      code,
+      playerId,
+      attackerRow,
+      targetPlayerId,
+      targetRow
+    });
+
+    return sendSuccess(res, result, 'Combat target selected successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
+ * Fire authoritative combat shot (Task 10)
+ */
+export const fireCombatShot = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId, attackerRow, targetPlayerId, targetRow, actionId } = req.body;
+
+    if (!code || !playerId || attackerRow === undefined || !targetPlayerId || targetRow === undefined) {
+      return sendError(
+        res,
+        'code, playerId, attackerRow, targetPlayerId, and targetRow are required',
+        400
+      );
+    }
+
+    const result = await roomService.fireShot({
+      code,
+      playerId,
+      attackerRow,
+      targetPlayerId,
+      targetRow,
+      actionId
+    });
+
+    return sendSuccess(res, result, 'Shot fired successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
  * Legacy server-authoritative random book page draw endpoint
  * Validates that drawing uses the room's configured bookPageCount
  */

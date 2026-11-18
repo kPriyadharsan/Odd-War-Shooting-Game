@@ -31,6 +31,9 @@ export const TerritoryColumn = ({
   onSelectRow = () => {},
   onOpenDrawing = () => {},
   eligibleRowNumber = null,
+  isTargetableOpponent = false,
+  selectedTarget = null,
+  onSelectTarget = () => {},
   territoryIndex = 0,
   totalOpponents = 1,
   className = ''
@@ -39,6 +42,7 @@ export const TerritoryColumn = ({
   const shadeName = player?.assignedShade?.name || player?.primaryColor || 'Blue Ink';
   const nickname = player?.nickname || `Warrior ${territoryIndex + 1}`;
   const isHost = Boolean(player?.isHost);
+  const isPlayerEliminated = Boolean(player?.isEliminated);
 
   // Map 5 rows data from territory.rowStates or rows fallback
   const rowStates = player?.territory?.rowStates || player?.rows || [];
@@ -50,7 +54,9 @@ export const TerritoryColumn = ({
   return (
     <div
       className={`relative flex flex-col h-full rounded-xl border transition-all duration-200 overflow-hidden ${
-        isHomeTerritory
+        isPlayerEliminated
+          ? 'bg-[#F2EDE4]/70 border-[#8C929D] opacity-75'
+          : isHomeTerritory
           ? 'bg-[#FCFAF5] border-[#242730] shadow-md ring-1 ring-[#242730]/10'
           : 'bg-[#F9F5EC]/70 border-[#D5CFC3] hover:border-[#D5CFC3]/90'
       } ${className}`}
@@ -64,14 +70,14 @@ export const TerritoryColumn = ({
       <div
         className="p-3 sm:p-3.5 border-b-2 flex flex-col gap-2 shrink-0 select-none"
         style={{
-          backgroundColor: `${shadeHex}10`,
-          borderColor: isHomeTerritory ? '#242730' : `${shadeHex}30`
+          backgroundColor: isPlayerEliminated ? '#F2EDE4' : `${shadeHex}10`,
+          borderColor: isPlayerEliminated ? '#8C929D' : isHomeTerritory ? '#242730' : `${shadeHex}30`
         }}
       >
         {/* Top line: Status, Home/Host tags */}
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <MiniPencilAvatar hexColor={shadeHex} isHome={isHomeTerritory} />
+            <MiniPencilAvatar hexColor={isPlayerEliminated ? '#8C929D' : shadeHex} isHome={isHomeTerritory} />
 
             <div className="min-w-0">
               <div className="flex items-center gap-1">
@@ -81,7 +87,9 @@ export const TerritoryColumn = ({
                   </span>
                 )}
                 <h3
-                  className="font-display text-sm sm:text-base font-bold text-[#242730] truncate"
+                  className={`font-display text-sm sm:text-base font-bold truncate ${
+                    isPlayerEliminated ? 'text-[#8C929D] line-through' : 'text-[#242730]'
+                  }`}
                   title={nickname}
                 >
                   {nickname}
@@ -90,9 +98,13 @@ export const TerritoryColumn = ({
             </div>
           </div>
 
-          {/* Territory Badge: HOME vs OPPONENT */}
+          {/* Territory Badge: HOME vs OPPONENT vs ELIMINATED */}
           <div className="shrink-0">
-            {isHomeTerritory ? (
+            {isPlayerEliminated ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#CE4242] text-white shadow-xs">
+                ELIMINATED
+              </span>
+            ) : isHomeTerritory ? (
               <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#242730] text-[#F8F4EB] shadow-xs">
                 <Sparkles className="w-3 h-3 text-[#D59926]" /> HOME (YOU)
               </span>
@@ -109,7 +121,7 @@ export const TerritoryColumn = ({
           <div className="flex items-center gap-1.5">
             <span
               className="w-3 h-3 rounded-full border border-black/20 shadow-xs shrink-0"
-              style={{ backgroundColor: shadeHex }}
+              style={{ backgroundColor: isPlayerEliminated ? '#8C929D' : shadeHex }}
             />
             <span className="font-mono text-[11px] text-[#4A4F5B] truncate max-w-[130px]">
               {shadeName}
@@ -128,6 +140,15 @@ export const TerritoryColumn = ({
           const rowData = playerRows.find((r) => r.rowNumber === rowNum) || { rowNumber: rowNum };
           const isSelected = isHomeTerritory && selectedRowNumber === rowNum;
           const isEligible = isHomeTerritory && eligibleRowNumber === rowNum;
+          const isTargeted =
+            !isHomeTerritory &&
+            selectedTarget?.playerId === player.playerId &&
+            selectedTarget?.rowNumber === rowNum;
+          const isTargetable =
+            !isHomeTerritory &&
+            !isPlayerEliminated &&
+            isTargetableOpponent &&
+            !rowData.isEliminated;
 
           return (
             <RowStation
@@ -139,6 +160,10 @@ export const TerritoryColumn = ({
               onSelectRow={onSelectRow}
               onOpenDrawing={onOpenDrawing}
               isEligibleForAction={isEligible}
+              isTargetable={isTargetable}
+              isTargeted={isTargeted}
+              onSelectTarget={onSelectTarget}
+              playerId={player.playerId}
               playerShadeHex={shadeHex}
             />
           );

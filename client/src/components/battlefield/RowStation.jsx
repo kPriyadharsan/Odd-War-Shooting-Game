@@ -7,18 +7,20 @@ import {
   Shield,
   Circle,
   Skull,
-  Pencil
+  Pencil,
+  Crosshair
 } from 'lucide-react';
 import { ROW_STATUS, ROW_STATUS_META } from '../../store/battlefieldState.js';
 import { RenderedCharacterStrokes } from '../drawing/RenderedCharacterStrokes.jsx';
 
 /**
- * RowStation Component (Task 09)
+ * RowStation Component (Tasks 09 & 10)
  * Renders an independent playable row station (1, 3, 5, 7, or 9).
  * - Displays the actual player's manual pencil drawing vectors.
  * - Displays construction stage status (HEAD, BODY, GUN, BULLETS, ELIMINATED).
- * - Displays ammunition bullet counters.
- * - Restricts drawing and selection strictly to home territory.
+ * - Displays 3 ammunition bullet slots (EMPTY, LOADED, FIRED).
+ * - Displays pencil cross-out strike and skull when ELIMINATED.
+ * - Displays targeting crosshair when targeted in combat.
  */
 export const RowStation = ({
   rowNumber,
@@ -28,6 +30,10 @@ export const RowStation = ({
   onSelectRow,
   onOpenDrawing,
   isEligibleForAction = false,
+  isTargetable = false,
+  isTargeted = false,
+  onSelectTarget,
+  playerId = '',
   playerShadeHex = '#2B68B4',
   className = ''
 }) => {
@@ -36,38 +42,64 @@ export const RowStation = ({
   const drawings = rowData?.drawings || null;
   const hasDrawings = drawings && (drawings.HEAD || drawings.BODY || drawings.GUN || drawings.BULLET);
   const bulletCount = rowData?.bulletCount || 0;
+  const isEliminated = Boolean(rowData?.isEliminated || status === ROW_STATUS.ELIMINATED);
+
+  // Ammunition 3 slots breakdown: EMPTY, LOADED, FIRED
+  const bulletSlots = rowData?.bullets || [
+    { slot: 1, state: bulletCount >= 1 ? 'LOADED' : 'EMPTY' },
+    { slot: 2, state: bulletCount >= 2 ? 'LOADED' : 'EMPTY' },
+    { slot: 3, state: bulletCount >= 3 ? 'LOADED' : 'EMPTY' }
+  ];
 
   const statusMeta = ROW_STATUS_META[status] || ROW_STATUS_META[ROW_STATUS.EMPTY];
-  const isEliminated = rowData?.isEliminated || status === ROW_STATUS.ELIMINATED;
 
   const handleClick = () => {
     if (isHomeTerritory && typeof onSelectRow === 'function') {
       onSelectRow(rowNumber);
+    } else if (!isHomeTerritory && isTargetable && !isEliminated && typeof onSelectTarget === 'function') {
+      onSelectTarget(playerId, rowNumber);
     }
   };
 
   return (
     <div
       onClick={handleClick}
-      role={isHomeTerritory ? 'button' : 'region'}
-      tabIndex={isHomeTerritory ? 0 : -1}
-      aria-label={`Row ${rowNumber} ${isHomeTerritory ? '(Your Territory)' : '(Opponent Territory)'}`}
-      aria-pressed={isHomeTerritory ? isSelected : undefined}
+      role={isHomeTerritory || (isTargetable && !isEliminated) ? 'button' : 'region'}
+      tabIndex={isHomeTerritory || (isTargetable && !isEliminated) ? 0 : -1}
+      aria-label={`Row ${rowNumber} ${
+        isHomeTerritory ? '(Your Territory)' : '(Opponent Territory)'
+      } ${isEliminated ? '- Eliminated' : ''}`}
+      aria-pressed={isHomeTerritory ? isSelected : isTargeted}
       className={`group relative w-full h-[98px] sm:h-[108px] rounded-lg transition-all duration-200 select-none flex items-center justify-between px-2.5 sm:px-3 border ${
-        isHomeTerritory
+        isEliminated
+          ? 'bg-[#F2EDE4]/60 border-[#D5CFC3] opacity-65 cursor-not-allowed'
+          : isTargeted
+          ? 'bg-[#FFF3F3] border-[#CE4242] shadow-sketch ring-2 ring-[#CE4242]/40 cursor-pointer z-20 scale-[1.01]'
+          : !isHomeTerritory && isTargetable
+          ? 'bg-[#FAF6EE] border-[#CE4242]/50 hover:border-[#CE4242] hover:bg-[#FFF5F5] cursor-crosshair ring-1 ring-[#CE4242]/20'
+          : isHomeTerritory
           ? isSelected
             ? 'bg-[#FFFDF9] border-[#242730] shadow-sketch ring-2 ring-[#242730]/15 cursor-pointer z-10'
             : isEligibleForAction
             ? 'bg-[#F0F7F3] border-[#2E8557] ring-1 ring-[#2E8557]/40 cursor-pointer animate-pulse'
             : 'bg-[#FCFAF5]/90 border-[#D5CFC3] hover:border-[#242730]/60 hover:bg-[#FFFDF9] cursor-pointer'
           : 'bg-[#FAF6EE]/60 border-[#D5CFC3]/60 cursor-default opacity-90'
-      } ${isEliminated ? 'opacity-40 grayscale' : ''} ${className}`}
+      } ${className}`}
     >
       {/* Selection Left Accent Rib (Pencil mark) */}
-      {isHomeTerritory && isSelected && (
+      {isHomeTerritory && isSelected && !isEliminated && (
         <motion.div
           layoutId="selectedRowBar"
           className="absolute left-0 top-1 bottom-1 w-1.5 rounded-r bg-[#242730]"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        />
+      )}
+
+      {/* Target Red Indicator Bar */}
+      {isTargeted && (
+        <motion.div
+          layoutId="targetedRowBar"
+          className="absolute left-0 top-1 bottom-1 w-2 rounded-r bg-[#CE4242]"
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         />
       )}
@@ -76,12 +108,22 @@ export const RowStation = ({
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
         <div
           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg sm:text-xl border transition-transform ${
-            isSelected && isHomeTerritory
+            isEliminated
+              ? 'border-[#8C929D] bg-[#8C929D]/15 text-[#8C929D] line-through'
+              : isTargeted
+              ? 'scale-105 border-[#CE4242] bg-[#CE4242] text-white shadow-sm'
+              : isSelected && isHomeTerritory
               ? 'scale-105 border-[#242730] text-white shadow-sm'
               : 'border-[#D5CFC3] text-[#242730]'
           }`}
           style={{
-            backgroundColor: isSelected && isHomeTerritory ? playerShadeHex : `${playerShadeHex}18`
+            backgroundColor: isEliminated
+              ? undefined
+              : isTargeted
+              ? '#CE4242'
+              : isSelected && isHomeTerritory
+              ? playerShadeHex
+              : `${playerShadeHex}18`
           }}
         >
           {rowNumber}
@@ -91,7 +133,11 @@ export const RowStation = ({
           <span className="font-mono text-[10px] text-[#8C929D] uppercase tracking-wider">
             Row
           </span>
-          <span className="font-display font-bold text-xs text-[#242730] leading-none">
+          <span
+            className={`font-display font-bold text-xs leading-none ${
+              isEliminated ? 'text-[#8C929D] line-through' : 'text-[#242730]'
+            }`}
+          >
             Pos {rowNumber}
           </span>
         </div>
@@ -99,13 +145,25 @@ export const RowStation = ({
 
       {/* Center: Character Drawing Canvas Viewport */}
       <div className="flex-1 mx-2 sm:mx-3 h-full flex flex-col justify-center items-center">
-        <div className="relative w-full max-w-[140px] sm:max-w-[180px] h-14 sm:h-16 rounded border border-dashed border-[#D5CFC3] bg-white/40 group-hover:bg-white/70 transition-colors flex items-center justify-center overflow-hidden px-2">
+        <div
+          className={`relative w-full max-w-[140px] sm:max-w-[180px] h-14 sm:h-16 rounded border transition-colors flex items-center justify-center overflow-hidden px-2 ${
+            isEliminated
+              ? 'border-[#CE4242]/40 bg-[#FAF4F4]'
+              : isTargeted
+              ? 'border-[#CE4242] bg-[#FFF8F8]'
+              : 'border-dashed border-[#D5CFC3] bg-white/40 group-hover:bg-white/70'
+          }`}
+        >
           {/* Subtle notebook horizontal lines inside drawing box */}
           <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_11px,rgba(130,155,185,0.4)_12px)]" />
 
           {/* Render Actual Freehand Pencil Drawing If Present */}
           {hasDrawings ? (
-            <div className="relative w-full h-full p-1 flex items-center justify-center">
+            <div
+              className={`relative w-full h-full p-1 flex items-center justify-center ${
+                isEliminated ? 'opacity-35 grayscale contrast-75' : ''
+              }`}
+            >
               <RenderedCharacterStrokes
                 drawings={drawings}
                 width="100%"
@@ -128,33 +186,96 @@ export const RowStation = ({
               </span>
             </div>
           )}
+
+          {/* Pencil Cross-Out Strike Overlay on Eliminated Station */}
+          {isEliminated && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <svg className="w-full h-full" viewBox="0 0 160 60" preserveAspectRatio="none">
+                {/* Diagonal pencil scratch 1 */}
+                <path
+                  d="M 5,8 Q 80,32 155,54"
+                  stroke="#CE4242"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray="4 1"
+                  fill="none"
+                  opacity="0.85"
+                />
+                {/* Diagonal pencil scratch 2 */}
+                <path
+                  d="M 155,8 Q 80,28 5,54"
+                  stroke="#CE4242"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray="4 1"
+                  fill="none"
+                  opacity="0.85"
+                />
+                {/* Middle scribble scratch */}
+                <path
+                  d="M 20,30 Q 50,22 80,31 T 140,28"
+                  stroke="#242730"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity="0.6"
+                />
+              </svg>
+              <div className="absolute px-2 py-0.5 bg-[#CE4242] text-white font-mono text-[9px] font-black tracking-widest rounded shadow-xs rotate-[-8deg] border border-white/60">
+                ELIMINATED
+              </div>
+            </div>
+          )}
+
+          {/* Crosshair Overlay when targeted */}
+          {isTargeted && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 bg-[#CE4242]/10 animate-pulse">
+              <Crosshair className="w-8 h-8 text-[#CE4242]" />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right: Stage Badge, Ammunition & Interaction feedback */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span
-          className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border ${statusMeta.badgeClass}`}
-        >
-          {statusMeta.shortLabel}
-        </span>
+        {isEliminated ? (
+          <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border bg-[#FDF2F2] text-[#CE4242] border-[#CE4242]/40 font-bold">
+            DESTROYED
+          </span>
+        ) : (
+          <span
+            className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border ${statusMeta.badgeClass}`}
+          >
+            {statusMeta.shortLabel}
+          </span>
+        )}
 
-        {/* Ammunition Slots (3 Bullets max) */}
-        {bulletCount > 0 && (
-          <div className="flex items-center gap-0.5" title={`${bulletCount}/3 Bullets loaded`}>
-            {[1, 2, 3].map((slot) => (
+        {/* Ammunition Slots (3 Bullets: EMPTY, LOADED, FIRED) */}
+        {!isEliminated && (
+          <div
+            className="flex items-center gap-1 p-0.5 bg-black/5 rounded border border-black/5"
+            title={`Ammunition: ${bulletCount}/3 Loaded`}
+          >
+            {bulletSlots.map((b, idx) => (
               <span
-                key={slot}
-                className={`w-1.5 h-1.5 rounded-full ${
-                  slot <= bulletCount ? 'bg-[#2E8557]' : 'bg-[#D5CFC3]'
+                key={b.slot || idx + 1}
+                title={`Bullet ${idx + 1}: ${b.state}`}
+                className={`w-2 h-2 rounded-full transition-colors flex items-center justify-center text-[7px] ${
+                  b.state === 'LOADED'
+                    ? 'bg-[#2E8557] ring-1 ring-[#2E8557]/60 shadow-xs'
+                    : b.state === 'FIRED'
+                    ? 'bg-[#8C929D] opacity-40 line-through'
+                    : 'border border-dashed border-[#8C929D] bg-transparent'
                 }`}
               />
             ))}
           </div>
         )}
 
-        {/* Home vs Opponent Feedback / Draw Trigger */}
-        {isHomeTerritory ? (
+        {/* Home vs Opponent Feedback / Draw Trigger / Combat Targeting */}
+        {isEliminated ? (
+          <span className="text-[9px] font-mono text-[#CE4242] font-semibold">Row Out</span>
+        ) : isHomeTerritory ? (
           isEligibleForAction ? (
             <button
               type="button"
@@ -177,10 +298,27 @@ export const RowStation = ({
               Click to inspect
             </span>
           )
+        ) : isTargeted ? (
+          <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold text-[#CE4242]">
+            <Target className="w-3 h-3 text-[#CE4242]" /> TARGETED
+          </span>
+        ) : isTargetable ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof onSelectTarget === 'function') {
+                onSelectTarget(playerId, rowNumber);
+              }
+            }}
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#CE4242] hover:bg-[#B03535] text-white font-mono text-[9px] font-bold shadow-xs cursor-pointer"
+          >
+            <Crosshair className="w-2.5 h-2.5" /> TARGET
+          </button>
         ) : (
           <span
             className="inline-flex items-center gap-0.5 text-[9px] font-mono text-[#8C929D]/70"
-            title="Opponent row cannot be selected"
+            title="Opponent station"
           >
             <Lock className="w-2.5 h-2.5" /> Opponent
           </span>

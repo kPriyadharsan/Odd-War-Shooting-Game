@@ -27,6 +27,10 @@ import { NotebookBattlefieldArena } from '../../components/battlefield/NotebookB
 import { MagicalBookStage } from '../../components/book/MagicalBookStage.jsx';
 import { ResultHistoryPanel } from '../../components/book/ResultHistoryPanel.jsx';
 import { CharacterDrawingModal } from '../../components/drawing/CharacterDrawingModal.jsx';
+import { CombatActionPanel } from '../../components/combat/CombatActionPanel.jsx';
+import { ShootingAnimationOverlay } from '../../components/combat/ShootingAnimationOverlay.jsx';
+import { VictoryModal } from '../../components/combat/VictoryModal.jsx';
+import { CombatLogFeed } from '../../components/combat/CombatLogFeed.jsx';
 import { roomApi } from '../../services/roomApi.js';
 import { getSocket } from '../../services/socket.js';
 import { soundEffects } from '../../services/soundEffects.js';
@@ -58,6 +62,13 @@ export const BattlefieldPage = () => {
   const [drawingStage, setDrawingStage] = useState('HEAD');
   const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false);
   const [drawingError, setDrawingError] = useState(null);
+
+  // Authoritative Combat Engine State (Task 10)
+  const [selectedTarget, setSelectedTarget] = useState(null); // { playerId, rowNumber }
+  const [isShootingActive, setIsShootingActive] = useState(false);
+  const [isFiringShot, setIsFiringShot] = useState(false);
+  const [combatError, setCombatError] = useState(null);
+  const [isVictoryModalOpen, setIsVictoryModalOpen] = useState(false);
 
   const socketRef = useRef(null);
 
@@ -186,6 +197,46 @@ export const BattlefieldPage = () => {
       setIsSubmittingDrawing(false);
     };
 
+    // Task 10: Combat Socket Events
+    const handleShotFired = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+      soundEffects.playGunshot();
+      setIsShootingActive(true);
+      setTimeout(() => {
+        soundEffects.playPencilStrike();
+      }, 450);
+
+      const shot = data.shotEvent;
+      if (shot) {
+        showNotification(
+          `⚔️ ${shot.attackerNickname} fired at ${shot.targetNickname}'s Row ${shot.targetRow}!`
+        );
+      }
+    };
+
+    const handleRowEliminated = (data) => {
+      if (!isMounted) return;
+      soundEffects.playPencilStrike();
+      showNotification(
+        `💥 Row ${data.targetRow} eliminated!`
+      );
+    };
+
+    const handleMatchFinished = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+      soundEffects.playVictoryFanfare();
+      setIsVictoryModalOpen(true);
+      showNotification(`🏆 MATCH WON by ${data.winnerNickname || 'Warrior'}!`);
+    };
+
+    const handleCombatError = (err) => {
+      if (!isMounted) return;
+      setCombatError(err.message || 'Combat action failed');
+      setIsFiringShot(false);
+    };
+
     socket.on('room:state', handleRoomState);
     socket.on('ROOM_STATE', handleRoomState);
     socket.on('room:player_left', handlePlayerLeft);
@@ -206,6 +257,16 @@ export const BattlefieldPage = () => {
     socket.on('DRAWING_ERROR', handleDrawingError);
     socket.on('drawing:error', handleDrawingError);
 
+    // Combat events (Task 10)
+    socket.on('SHOT_FIRED', handleShotFired);
+    socket.on('combat:shot_fired', handleShotFired);
+    socket.on('ROW_ELIMINATED', handleRowEliminated);
+    socket.on('combat:row_eliminated', handleRowEliminated);
+    socket.on('MATCH_FINISHED', handleMatchFinished);
+    socket.on('combat:match_finished', handleMatchFinished);
+    socket.on('COMBAT_ERROR', handleCombatError);
+    socket.on('combat:error', handleCombatError);
+
     return () => {
       isMounted = false;
       socket.off('room:state', handleRoomState);
@@ -223,6 +284,14 @@ export const BattlefieldPage = () => {
       socket.off('drawing:stage_completed', handleDrawingUpdated);
       socket.off('DRAWING_ERROR', handleDrawingError);
       socket.off('drawing:error', handleDrawingError);
+      socket.off('SHOT_FIRED', handleShotFired);
+      socket.off('combat:shot_fired', handleShotFired);
+      socket.off('ROW_ELIMINATED', handleRowEliminated);
+      socket.off('combat:row_eliminated', handleRowEliminated);
+      socket.off('MATCH_FINISHED', handleMatchFinished);
+      socket.off('combat:match_finished', handleMatchFinished);
+      socket.off('COMBAT_ERROR', handleCombatError);
+      socket.off('combat:error', handleCombatError);
     };
   }, [roomCode, currentPlayer.playerId]);
 
@@ -364,6 +433,111 @@ export const BattlefieldPage = () => {
     }
   };
 
+  // Task 10: Combat Target Selection
+  const handleSelectTarget = (targetPlayerId, targetRowNumber) => {
+    if (targetPlayerId === currentPlayer.playerId) {
+      setCombatError('Friendly fire blocked! You cannot attack your own territory.');
+      return;
+    }
+
+    const targetPlayer = room?.players?.find((p) => p.playerId === targetPlayerId);
+    if (!targetPlayer) return;
+    if (targetPlayer.isEliminated) {
+      setCombatError(`${targetPlayer.nickname} is already eliminated!`);
+      return;
+    }
+
+    const targetRow = targetPlayer.territory?.rowStates?.find((r) => r.rowNumber === targetRowNumber);
+    if (targetRow?.isEliminated) {
+      setCombatError(`Row ${targetRowNumber} is already eliminated! Choose an active station.`);
+      return;
+    }
+
+    setCombatError(null);
+    setSelectedTarget({ playerId: targetPlayerId, rowNumber: targetRowNumber });
+    soundEffects.playPencilStrike();
+
+    // Inform server via Socket.IO
+    socketRef.current?.emit(
+      'SELECT_TARGET',
+      {
+        roomCode: room.code,
+        playerId: currentPlayer.playerId,
+        attackerRow: selectedRowNumber,
+        targetPlayerId,
+        targetRow: targetRowNumber
+      },
+      (ack) => {
+        if (ack && !ack.success) {
+          setCombatError(ack.message);
+        }
+      }
+    );
+  };
+
+  const handleClearTarget = () => {
+    setSelectedTarget(null);
+    setCombatError(null);
+  };
+
+  // Task 10: Authoritative Combat Fire Shot
+  const handleFireShot = async () => {
+    if (!selectedTarget || isFiringShot) return;
+
+    setIsFiringShot(true);
+    setCombatError(null);
+
+    const actionId = `shot_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    try {
+      // 1. Immediate visual & sound trigger for feedback
+      soundEffects.playGunshot();
+      setIsShootingActive(true);
+
+      // 2. Emit via Socket.IO
+      socketRef.current?.emit(
+        'FIRE_SHOT',
+        {
+          roomCode: room.code,
+          playerId: currentPlayer.playerId,
+          attackerRow: selectedRowNumber,
+          targetPlayerId: selectedTarget.playerId,
+          targetRow: selectedTarget.rowNumber,
+          actionId
+        },
+        async (ack) => {
+          if (ack && !ack.success) {
+            setCombatError(ack.message);
+            setIsFiringShot(false);
+          }
+        }
+      );
+
+      // 3. REST API execution
+      const result = await roomApi.fireCombatShot({
+        code: room.code,
+        playerId: currentPlayer.playerId,
+        attackerRow: selectedRowNumber,
+        targetPlayerId: selectedTarget.playerId,
+        targetRow: selectedTarget.rowNumber,
+        actionId
+      });
+
+      if (result?.room) {
+        setRoom(result.room);
+        if (result.room.status === 'FINISHED' || result.shotEvent?.matchFinished) {
+          setIsVictoryModalOpen(true);
+        }
+      }
+
+      setSelectedTarget(null);
+    } catch (err) {
+      setCombatError(err.message || 'Combat shot failed');
+    } finally {
+      setIsFiringShot(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <NotebookBackground className="py-16">
@@ -407,6 +581,25 @@ export const BattlefieldPage = () => {
   // Active drawings for drawing modal
   const activeModalRowData = homeRowStates.find((r) => r.rowNumber === drawingRowNumber);
   const activePreviousDrawings = activeModalRowData?.drawings || null;
+
+  // Task 10: Combat calculations
+  const targetOpponent = room.players?.find((p) => p.playerId === selectedTarget?.playerId) || null;
+  const isMyTurn = !room.gameState?.activePlayerId || room.gameState.activePlayerId === currentPlayer.playerId;
+  const isAttackerArmed = Boolean(
+    selectedRowData?.drawings?.HEAD &&
+      selectedRowData?.drawings?.BODY &&
+      selectedRowData?.drawings?.GUN &&
+      selectedRowData?.bulletCount > 0 &&
+      !selectedRowData?.isEliminated
+  );
+  const totalShotsFired = room.gameState?.combatLog?.length || 0;
+  const winnerNickname =
+    room.gameState?.winnerNickname ||
+    (room.status === 'FINISHED' ? room.players?.find((p) => !p.isEliminated)?.nickname : '');
+  const isCurrentUserWinner = Boolean(
+    room.gameState?.winnerId === currentPlayer.playerId ||
+      (room.status === 'FINISHED' && homePlayer && !homePlayer.isEliminated)
+  );
 
   return (
     <NotebookBackground className="py-6 sm:py-8 min-h-screen">
@@ -572,7 +765,24 @@ export const BattlefieldPage = () => {
         </div>
 
         {/* =========================================================================
-            TASK 07 & 09: MAIN BATTLEFIELD ARENA WITH ACTUAL FREEHAND DRAWINGS
+            TASK 10: COMBAT ACTION CONTROL BAR
+            ========================================================================= */}
+        <div className="mb-6">
+          <CombatActionPanel
+            attackerRow={selectedRowNumber}
+            attackerRowData={selectedRowData}
+            selectedTarget={selectedTarget}
+            targetOpponent={targetOpponent}
+            onFireShot={handleFireShot}
+            onClearTarget={handleClearTarget}
+            isFiring={isFiringShot}
+            isMyTurn={isMyTurn}
+            combatError={combatError}
+          />
+        </div>
+
+        {/* =========================================================================
+            TASK 07 & 09 & 10: MAIN BATTLEFIELD ARENA
             ========================================================================= */}
         <div className="mb-8">
           <NotebookBattlefieldArena
@@ -582,13 +792,16 @@ export const BattlefieldPage = () => {
             onSelectRow={handleSelectRow}
             onOpenDrawing={handleOpenDrawingModal}
             eligibleRowNumber={eligibleRowNumber}
+            isTargetableOpponent={isAttackerArmed}
+            selectedTarget={selectedTarget}
+            onSelectTarget={handleSelectTarget}
           />
         </div>
 
         {/* Bottom Section: History & Selected Row Inspector Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Selected Row Interaction & Manual Drawing Trigger Card */}
-          <div className="md:col-span-2">
+          <div className="lg:col-span-1">
             <Card className="p-4 sm:p-5 border-2 border-[#242730] bg-[#FAF6EE] shadow-sm h-full flex flex-col justify-between">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -629,18 +842,44 @@ export const BattlefieldPage = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs font-mono text-[#8C929D] pt-3 border-t border-[#D5CFC3] mt-3">
-                <span>Task 09 Manual Drawing Engine Active</span>
-                <span>Pencil, Eraser, Undo, Touch/Stylus Supported</span>
+                <span>Task 09 Drawing Active</span>
+                <span>Pencil • Eraser • Undo</span>
               </div>
             </Card>
           </div>
 
-          {/* Book Result History Panel */}
-          <div className="md:col-span-1">
+          {/* Combat Log Feed (Task 10) */}
+          <div className="lg:col-span-1">
+            <CombatLogFeed combatLog={room?.gameState?.combatLog || []} className="h-full" />
+          </div>
+
+          {/* Book Result History Panel (Task 08) */}
+          <div className="lg:col-span-1">
             <ResultHistoryPanel history={room?.gameState?.history || []} />
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          TASK 10: 2D SHOOTING PROJECTILE ANIMATION OVERLAY
+          ========================================================================= */}
+      <ShootingAnimationOverlay
+        isActive={isShootingActive}
+        onAnimationComplete={() => setIsShootingActive(false)}
+      />
+
+      {/* =========================================================================
+          TASK 10: VICTORY CELEBRATION MODAL
+          ========================================================================= */}
+      <VictoryModal
+        isOpen={isVictoryModalOpen || room.status === 'FINISHED'}
+        winnerNickname={winnerNickname}
+        winnerId={room?.gameState?.winnerId}
+        isCurrentUserWinner={isCurrentUserWinner}
+        totalShotsFired={totalShotsFired}
+        onPlayAgain={() => navigate(`/rooms/${room.code}/waiting`)}
+        onReturnToLobby={() => navigate('/rooms')}
+      />
 
       {/* =========================================================================
           TASK 09: CHARACTER DRAWING MODAL

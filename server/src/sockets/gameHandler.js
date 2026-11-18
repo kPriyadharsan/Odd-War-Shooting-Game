@@ -159,6 +159,168 @@ export const registerGameHandlers = (io, socket) => {
   socket.on('SUBMIT_DRAWING', handleSubmitDrawing);
   socket.on('drawing:submit', handleSubmitDrawing);
 
+  /**
+   * Client selects a combat target (Task 10)
+   * Payload: { roomCode, playerId, attackerRow, targetPlayerId, targetRow }
+   */
+  const handleSelectCombatTarget = async (payload, callback) => {
+    try {
+      const { roomCode, playerId, attackerRow, targetPlayerId, targetRow } = payload || {};
+      const cleanCode = (roomCode || socket.data?.roomCode)?.toUpperCase().trim();
+      const activePlayerId = playerId || socket.data?.playerId;
+
+      if (!cleanCode || !activePlayerId || attackerRow === undefined || !targetPlayerId || targetRow === undefined) {
+        const errorMsg = 'roomCode, playerId, attackerRow, targetPlayerId, and targetRow are required.';
+        socket.emit('COMBAT_ERROR', { message: errorMsg });
+        socket.emit('combat:error', { message: errorMsg });
+        if (typeof callback === 'function') {
+          return callback({ success: false, message: errorMsg });
+        }
+        return;
+      }
+
+      logger.info(
+        `[Socket.IO] Socket ${socket.id} (Player: ${activePlayerId}) selected target ${targetPlayerId}:Row ${targetRow} with attacker Row ${attackerRow} in room ${cleanCode}`
+      );
+
+      const result = await roomService.selectCombatTarget({
+        code: cleanCode,
+        playerId: activePlayerId,
+        attackerRow,
+        targetPlayerId,
+        targetRow
+      });
+
+      const targetPayload = {
+        roomCode: cleanCode,
+        selectedTarget: result.selectedTarget,
+        room: result.room
+      };
+
+      io.to(cleanCode).emit('TARGET_SELECTED', targetPayload);
+      io.to(cleanCode).emit('combat:target_selected', targetPayload);
+      io.to(cleanCode).emit('room:state', result.room);
+      io.to(cleanCode).emit('ROOM_STATE', result.room);
+
+      if (typeof callback === 'function') {
+        callback({ success: true, result });
+      }
+    } catch (err) {
+      logger.error(`[Socket.IO] Error selecting combat target for socket ${socket.id}:`, err.message);
+      const errorPayload = {
+        message: err.message,
+        statusCode: err.statusCode || 400
+      };
+
+      socket.emit('COMBAT_ERROR', errorPayload);
+      socket.emit('combat:error', errorPayload);
+
+      if (typeof callback === 'function') {
+        callback({ success: false, message: err.message });
+      }
+    }
+  };
+
+  socket.on('SELECT_TARGET', handleSelectCombatTarget);
+  socket.on('combat:select_target', handleSelectCombatTarget);
+  socket.on('SELECT_COMBAT_TARGET', handleSelectCombatTarget);
+
+  /**
+   * Client fires a shot at an opponent row (Task 10)
+   * Payload: { roomCode, playerId, attackerRow, targetPlayerId, targetRow, actionId }
+   */
+  const handleFireShot = async (payload, callback) => {
+    try {
+      const { roomCode, playerId, attackerRow, targetPlayerId, targetRow, actionId } = payload || {};
+      const cleanCode = (roomCode || socket.data?.roomCode)?.toUpperCase().trim();
+      const activePlayerId = playerId || socket.data?.playerId;
+
+      if (!cleanCode || !activePlayerId || attackerRow === undefined || !targetPlayerId || targetRow === undefined) {
+        const errorMsg = 'roomCode, playerId, attackerRow, targetPlayerId, and targetRow are required.';
+        socket.emit('COMBAT_ERROR', { message: errorMsg });
+        socket.emit('combat:error', { message: errorMsg });
+        if (typeof callback === 'function') {
+          return callback({ success: false, message: errorMsg });
+        }
+        return;
+      }
+
+      logger.info(
+        `[Socket.IO] Socket ${socket.id} (Player: ${activePlayerId}) firing from Row ${attackerRow} at ${targetPlayerId}:Row ${targetRow} in room ${cleanCode}`
+      );
+
+      const result = await roomService.fireShot({
+        code: cleanCode,
+        playerId: activePlayerId,
+        attackerRow,
+        targetPlayerId,
+        targetRow,
+        actionId
+      });
+
+      const shotPayload = {
+        roomCode: cleanCode,
+        shotEvent: result.shotEvent,
+        room: result.room
+      };
+
+      // Broadcast combat events to all clients in room
+      io.to(cleanCode).emit('SHOT_FIRED', shotPayload);
+      io.to(cleanCode).emit('combat:shot_fired', shotPayload);
+
+      io.to(cleanCode).emit('ROW_ELIMINATED', {
+        roomCode: cleanCode,
+        targetPlayerId: result.shotEvent.targetPlayerId,
+        targetRow: result.shotEvent.targetRow,
+        shotEvent: result.shotEvent
+      });
+      io.to(cleanCode).emit('combat:row_eliminated', {
+        roomCode: cleanCode,
+        targetPlayerId: result.shotEvent.targetPlayerId,
+        targetRow: result.shotEvent.targetRow,
+        shotEvent: result.shotEvent
+      });
+
+      io.to(cleanCode).emit('COMBAT_STATE_UPDATED', shotPayload);
+      io.to(cleanCode).emit('combat:state_updated', shotPayload);
+
+      if (result.shotEvent.matchFinished) {
+        const victoryPayload = {
+          roomCode: cleanCode,
+          winnerId: result.shotEvent.winnerId,
+          winnerNickname: result.shotEvent.winnerNickname,
+          room: result.room
+        };
+        io.to(cleanCode).emit('MATCH_FINISHED', victoryPayload);
+        io.to(cleanCode).emit('combat:match_finished', victoryPayload);
+      }
+
+      io.to(cleanCode).emit('room:state', result.room);
+      io.to(cleanCode).emit('ROOM_STATE', result.room);
+
+      if (typeof callback === 'function') {
+        callback({ success: true, result });
+      }
+    } catch (err) {
+      logger.error(`[Socket.IO] Error firing shot for socket ${socket.id}:`, err.message);
+      const errorPayload = {
+        message: err.message,
+        statusCode: err.statusCode || 400
+      };
+
+      socket.emit('COMBAT_ERROR', errorPayload);
+      socket.emit('combat:error', errorPayload);
+
+      if (typeof callback === 'function') {
+        callback({ success: false, message: err.message });
+      }
+    }
+  };
+
+  socket.on('FIRE_SHOT', handleFireShot);
+  socket.on('combat:fire', handleFireShot);
+  socket.on('FIRE_COMBAT_SHOT', handleFireShot);
+
   socket.on('game:ping', (timestamp, callback) => {
     if (typeof callback === 'function') {
       callback({ serverTime: Date.now(), clientTimestamp: timestamp });

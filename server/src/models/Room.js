@@ -49,9 +49,9 @@ const rowDrawingSchema = new mongoose.Schema(
     bullets: {
       type: [Object],
       default: [
-        { slot: 1, drawn: false, drawing: null },
-        { slot: 2, drawn: false, drawing: null },
-        { slot: 3, drawn: false, drawing: null }
+        { slot: 1, state: 'EMPTY', drawn: false, drawing: null },
+        { slot: 2, state: 'EMPTY', drawn: false, drawing: null },
+        { slot: 3, state: 'EMPTY', drawn: false, drawing: null }
       ]
     },
     isEliminated: { type: Boolean, default: false }
@@ -137,6 +137,10 @@ const roomPlayerSchema = new mongoose.Schema(
     isOnline: {
       type: Boolean,
       default: true
+    },
+    isEliminated: {
+      type: Boolean,
+      default: false
     },
     territory: {
       type: playerTerritorySchema,
@@ -238,6 +242,22 @@ const roomSchema = new mongoose.Schema(
       history: {
         type: [Object],
         default: []
+      },
+      combatLog: {
+        type: [Object],
+        default: []
+      },
+      winnerId: {
+        type: String,
+        default: null
+      },
+      winnerNickname: {
+        type: String,
+        default: null
+      },
+      selectedTarget: {
+        type: Object,
+        default: null
       }
     }
   },

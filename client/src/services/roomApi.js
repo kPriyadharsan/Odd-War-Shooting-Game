@@ -128,5 +128,27 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to submit drawing');
     return data.data;
+  },
+
+  selectCombatTarget: async ({ code, playerId, attackerRow, targetPlayerId, targetRow }) => {
+    const res = await fetch(`${API_BASE}/${code}/combat/target`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, attackerRow, targetPlayerId, targetRow })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to select target');
+    return data.data;
+  },
+
+  fireCombatShot: async ({ code, playerId, attackerRow, targetPlayerId, targetRow, actionId }) => {
+    const res = await fetch(`${API_BASE}/${code}/combat/fire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, attackerRow, targetPlayerId, targetRow, actionId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fire shot');
+    return data.data;
   }
 };
