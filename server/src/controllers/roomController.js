@@ -149,6 +149,71 @@ export const leaveRoom = async (req, res, next) => {
   }
 };
 
+export const setPlayerReady = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId, isReady } = req.body;
+
+    if (!code || !playerId) {
+      return sendError(res, 'Room code and playerId are required', 400);
+    }
+
+    const result = await roomService.setPlayerReady({
+      code,
+      playerId,
+      isReady: Boolean(isReady)
+    });
+
+    return sendSuccess(res, result, 'Player ready state updated');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+export const kickPlayer = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { hostPlayerId, targetPlayerId } = req.body;
+
+    if (!code || !hostPlayerId || !targetPlayerId) {
+      return sendError(res, 'Room code, hostPlayerId, and targetPlayerId are required', 400);
+    }
+
+    const result = await roomService.kickPlayer({
+      code,
+      hostPlayerId,
+      targetPlayerId
+    });
+
+    return sendSuccess(res, result, 'Player removed from room');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+export const startMatch = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { hostPlayerId } = req.body;
+
+    if (!code || !hostPlayerId) {
+      return sendError(res, 'Room code and hostPlayerId are required', 400);
+    }
+
+    const room = await roomService.startMatch({
+      code,
+      hostPlayerId
+    });
+
+    return sendSuccess(res, { room }, 'Match started');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
 /**
  * Server-authoritative random book page draw endpoint
  * Validates that drawing uses the room's configured bookPageCount

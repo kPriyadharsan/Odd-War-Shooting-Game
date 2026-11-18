@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
  * Board & Book Configuration:
  * - bookPageCount: 100 or 200 pages (host configured)
  * - territory: Each player owns 1 independent vertical territory with 5 rows (1, 3, 5, 7, 9)
+ * - assignedShade: Room-specific unique shade assigned within the player's primary color family
  */
 
 export const ROOM_STATUS = {
@@ -22,6 +23,16 @@ export const ROOM_STATUS = {
 export const ALLOWED_PAGE_COUNTS = [100, 200];
 export const ALLOWED_PLAYER_CAPACITIES = [2, 3, 4];
 export const TERRITORY_ROWS = [1, 3, 5, 7, 9];
+
+const playerShadeSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    hex: { type: String, required: true },
+    isPrimary: { type: Boolean, default: false }
+  },
+  { _id: false }
+);
 
 const playerTerritorySchema = new mongoose.Schema(
   {
@@ -59,6 +70,10 @@ const roomPlayerSchema = new mongoose.Schema(
       default: 'BLUE',
       uppercase: true
     },
+    assignedShade: {
+      type: playerShadeSchema,
+      required: true
+    },
     slotIndex: {
       type: Number,
       min: 0,
@@ -73,11 +88,23 @@ const roomPlayerSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    socketId: {
+      type: String,
+      default: null
+    },
+    isOnline: {
+      type: Boolean,
+      default: true
+    },
     territory: {
       type: playerTerritorySchema,
       required: true
     },
     joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    lastActiveAt: {
       type: Date,
       default: Date.now
     }

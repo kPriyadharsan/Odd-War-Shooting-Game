@@ -48,7 +48,7 @@ export const PublicRoomsPage = () => {
         code,
         player
       });
-      navigate(`/rooms/${joined.code}`);
+      navigate(`/rooms/${joined.code}/waiting`);
     } catch (err) {
       setError(err.message || 'Could not join room');
       setJoiningCode(null);

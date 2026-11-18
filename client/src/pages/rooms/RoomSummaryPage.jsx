@@ -244,6 +244,17 @@ export const RoomSummaryPage = () => {
             </div>
           </div>
 
+          {/* Direct link to live waiting room */}
+          <div className="mb-4">
+            <Link
+              to={`/rooms/${room.code}/waiting`}
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-sm shadow-sm transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Enter Multiplayer Waiting Room</span>
+            </Link>
+          </div>
+
           {/* Host Settings Controls (Only editable by Host in WAITING state) */}
           <div className="py-4 border-b border-[#D5CFC3] bg-[#FCFAF3]/50 rounded-xl px-4 my-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">

@@ -37,7 +37,7 @@ export const JoinRoomPage = () => {
         player
       });
 
-      navigate(`/rooms/${room.code}`);
+      navigate(`/rooms/${room.code}/waiting`);
     } catch (err) {
       setError(err.message || 'Could not join room');
       setIsSubmitting(false);

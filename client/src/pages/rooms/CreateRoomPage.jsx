@@ -70,8 +70,8 @@ export const CreateRoomPage = () => {
         });
       }
 
-      // Navigate to room summary
-      navigate(`/rooms/${createdRoom.code}`);
+      // Navigate to multiplayer waiting room (Task 06)
+      navigate(`/rooms/${createdRoom.code}/waiting`);
     } catch (err) {
       setError(err.message || 'Failed to create room.');
       setIsSubmitting(false);

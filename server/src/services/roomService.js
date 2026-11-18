@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS } from '../models/Room.js';
+import { ShadeService } from './shadeService.js';
 import { getDatabaseStatus } from '../config/database.js';
 import { logger } from '../utils/logger.js';
 
@@ -9,6 +10,13 @@ import { logger } from '../utils/logger.js';
  * Key: roomCode -> Room Object
  */
 const inMemoryRooms = new Map();
+
+/**
+ * Disconnection grace timers for temporary network disconnects
+ * Key: playerId -> NodeJS.Timeout
+ */
+const disconnectGraceTimers = new Map();
+const DISCONNECT_GRACE_PERIOD_MS = 25000; // 25 seconds grace period before auto-leaving
 
 /**
  * Generates an uppercase 6-character room code (e.g. "ODD482", "WAR791", "K9P2X4")
@@ -43,6 +51,25 @@ export const createTerritory = (slotIndex) => ({
   rows: [...TERRITORY_ROWS]
 });
 
+/**
+ * Recalculates room readiness based on player count and individual ready states.
+ */
+const evaluateRoomReadiness = (room) => {
+  if (room.status === ROOM_STATUS.STARTING || room.status === ROOM_STATUS.PLAYING || room.status === ROOM_STATUS.FINISHED) {
+    return;
+  }
+
+  const nonHostPlayers = room.players.filter((p) => !p.isHost);
+  const hasMinPlayers = room.players.length >= 2;
+  const allNonHostsReady = nonHostPlayers.length > 0 && nonHostPlayers.every((p) => p.isReady);
+
+  if (hasMinPlayers && allNonHostsReady) {
+    room.status = ROOM_STATUS.READY;
+  } else {
+    room.status = ROOM_STATUS.WAITING;
+  }
+};
+
 export const roomService = {
   /**
    * Generates a collision-safe room code.
@@ -66,7 +93,6 @@ export const roomService = {
       attempts++;
     }
 
-    // Fallback random 6 chars
     return `ODD${crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3)}`;
   },
 
@@ -87,15 +113,22 @@ export const roomService = {
       throw err;
     }
 
+    const hostColorFamily = (hostPlayer.primaryColor || 'BLUE').toUpperCase();
+    const hostShade = ShadeService.assignShade([], hostColorFamily, hostPlayer.playerId);
+
     const hostEntry = {
       playerId: hostPlayer.playerId,
       nickname: hostPlayer.nickname.trim(),
-      primaryColor: (hostPlayer.primaryColor || 'BLUE').toUpperCase(),
+      primaryColor: hostColorFamily,
+      assignedShade: hostShade,
       slotIndex: 0,
       isHost: true,
-      isReady: false,
+      isReady: true, // Host is inherently ready
+      socketId: hostPlayer.socketId || null,
+      isOnline: true,
       territory: createTerritory(0),
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      lastActiveAt: new Date()
     };
 
     const roomData = {
@@ -146,15 +179,22 @@ export const roomService = {
       throw err;
     }
 
+    const hostColorFamily = (hostPlayer.primaryColor || 'BLUE').toUpperCase();
+    const hostShade = ShadeService.assignShade([], hostColorFamily, hostPlayer.playerId);
+
     const hostEntry = {
       playerId: hostPlayer.playerId,
       nickname: hostPlayer.nickname.trim(),
-      primaryColor: (hostPlayer.primaryColor || 'BLUE').toUpperCase(),
+      primaryColor: hostColorFamily,
+      assignedShade: hostShade,
       slotIndex: 0,
       isHost: true,
-      isReady: false,
+      isReady: true,
+      socketId: hostPlayer.socketId || null,
+      isOnline: true,
       territory: createTerritory(0),
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      lastActiveAt: new Date()
     };
 
     const roomData = {
@@ -183,7 +223,6 @@ export const roomService = {
 
   /**
    * Updates host-controlled room settings (bookPageCount, maxPlayers, name).
-   * Strictly enforces that only the host can update settings and only in WAITING status.
    */
   updateRoomSettings: async ({ code, hostPlayerId, settings = {} }) => {
     const cleanCode = (code || '').toUpperCase().trim();
@@ -202,21 +241,18 @@ export const roomService = {
       throw err;
     }
 
-    // Host identity check
     if (room.hostId !== hostPlayerId) {
       const err = new Error('Only the room host can configure game settings.');
       err.statusCode = 403;
       throw err;
     }
 
-    // State check
-    if (room.status !== ROOM_STATUS.WAITING) {
+    if (room.status !== ROOM_STATUS.WAITING && room.status !== ROOM_STATUS.READY) {
       const err = new Error(`Cannot change settings while room is ${room.status.toLowerCase()}.`);
       err.statusCode = 400;
       throw err;
     }
 
-    // Validate bookPageCount if passed
     if (settings.bookPageCount !== undefined) {
       const pages = parseInt(settings.bookPageCount, 10);
       if (!ALLOWED_PAGE_COUNTS.includes(pages)) {
@@ -227,7 +263,6 @@ export const roomService = {
       room.bookPageCount = pages;
     }
 
-    // Validate maxPlayers if passed
     if (settings.maxPlayers !== undefined) {
       const capacity = parseInt(settings.maxPlayers, 10);
       if (!ALLOWED_PLAYER_CAPACITIES.includes(capacity)) {
@@ -243,7 +278,6 @@ export const roomService = {
       room.maxPlayers = capacity;
     }
 
-    // Validate name if passed
     if (settings.name !== undefined) {
       const cleanName = settings.name.trim();
       if (cleanName.length < 3 || cleanName.length > 32) {
@@ -253,6 +287,8 @@ export const roomService = {
       }
       room.name = cleanName;
     }
+
+    evaluateRoomReadiness(room);
 
     if (isDbConnected) {
       await room.save();
@@ -271,7 +307,7 @@ export const roomService = {
     if (isDbConnected) {
       const rooms = await Room.find({
         isPrivate: false,
-        status: ROOM_STATUS.WAITING,
+        status: { $in: [ROOM_STATUS.WAITING, ROOM_STATUS.READY] },
         $expr: { $lt: [{ $size: '$players' }, '$maxPlayers'] }
       })
         .sort({ createdAt: -1 })
@@ -281,7 +317,7 @@ export const roomService = {
     } else {
       const available = [];
       for (const room of inMemoryRooms.values()) {
-        if (!room.isPrivate && room.status === ROOM_STATUS.WAITING && room.players.length < room.maxPlayers) {
+        if (!room.isPrivate && (room.status === ROOM_STATUS.WAITING || room.status === ROOM_STATUS.READY) && room.players.length < room.maxPlayers) {
           available.push(sanitizeRoom(room));
         }
       }
@@ -307,8 +343,9 @@ export const roomService = {
 
   /**
    * Joins an existing room (public or private with password).
+   * Handles safe reconnects without creating duplicate entries or reassigning shades unnecessarily.
    */
-  joinRoom: async ({ code, password, player }) => {
+  joinRoom: async ({ code, password, player, socketId = null }) => {
     const cleanCode = (code || '').toUpperCase().trim();
     const isDbConnected = getDatabaseStatus().connected;
 
@@ -329,24 +366,52 @@ export const roomService = {
       throw err;
     }
 
-    // 1. Status Check
+    // Cancel any pending disconnect timer for this player
+    if (disconnectGraceTimers.has(player.playerId)) {
+      clearTimeout(disconnectGraceTimers.get(player.playerId));
+      disconnectGraceTimers.delete(player.playerId);
+      logger.info(`[RoomService] Cancelled disconnect grace timer for reconnecting player ${player.playerId}`);
+    }
+
+    // 1. RECONNECT CHECK: If player is already in this room, update connection state and return
+    const existingPlayerIndex = room.players.findIndex((p) => p.playerId === player.playerId);
+    if (existingPlayerIndex !== -1) {
+      const existing = room.players[existingPlayerIndex];
+      existing.isOnline = true;
+      existing.lastActiveAt = new Date();
+      if (socketId) existing.socketId = socketId;
+      
+      // Update nickname if changed in profile
+      if (player.nickname && player.nickname.trim() !== existing.nickname) {
+        existing.nickname = player.nickname.trim();
+        if (existing.isHost) room.hostNickname = existing.nickname;
+      }
+
+      // If player changed primaryColor family, reassign shade; otherwise keep existing shade
+      const requestedColor = (player.primaryColor || existing.primaryColor).toUpperCase();
+      if (requestedColor !== existing.primaryColor || !existing.assignedShade) {
+        existing.primaryColor = requestedColor;
+        existing.assignedShade = ShadeService.assignShade(room.players, requestedColor, player.playerId);
+        existing.isReady = existing.isHost; // reset ready if profile changed, host remains ready
+      }
+
+      evaluateRoomReadiness(room);
+
+      if (isDbConnected) await room.save();
+      logger.info(`[RoomService] Player ${player.nickname} reconnected to room ${cleanCode} (Shade: ${existing.assignedShade?.name})`);
+      return sanitizeRoom(room);
+    }
+
+    // 2. Status Check for new joiners
     if (room.status !== ROOM_STATUS.WAITING && room.status !== ROOM_STATUS.READY) {
-      const err = new Error(`Cannot join room: game is currently ${room.status.toLowerCase()}.`);
+      const err = new Error(`Cannot join room: match is currently ${room.status.toLowerCase()}.`);
       err.statusCode = 400;
       throw err;
     }
 
-    // 2. Capacity Check
+    // 3. Capacity Check
     if (room.players.length >= room.maxPlayers) {
       const err = new Error(`Room is full (${room.players.length}/${room.maxPlayers} players).`);
-      err.statusCode = 400;
-      throw err;
-    }
-
-    // 3. Duplicate Membership Check
-    const alreadyMember = room.players.some((p) => p.playerId === player.playerId);
-    if (alreadyMember) {
-      const err = new Error('You are already in this room.');
       err.statusCode = 400;
       throw err;
     }
@@ -367,44 +432,213 @@ export const roomService = {
       }
     }
 
-    // 5. Assign Next Available Slot (0..3) & Setup Territory
+    // 5. Assign Next Available Slot (0..3) & Unique Shade
     const takenSlots = new Set(room.players.map((p) => p.slotIndex));
     let nextSlot = 0;
     while (takenSlots.has(nextSlot) && nextSlot < 4) {
       nextSlot++;
     }
 
+    const playerColorFamily = (player.primaryColor || 'BLUE').toUpperCase();
+    const assignedShade = ShadeService.assignShade(room.players, playerColorFamily, player.playerId);
+
     const newPlayerEntry = {
       playerId: player.playerId,
       nickname: player.nickname.trim(),
-      primaryColor: (player.primaryColor || 'BLUE').toUpperCase(),
+      primaryColor: playerColorFamily,
+      assignedShade,
       slotIndex: nextSlot,
       isHost: false,
-      isReady: false,
+      isReady: false, // New joiners start NOT READY
+      socketId,
+      isOnline: true,
       territory: createTerritory(nextSlot),
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      lastActiveAt: new Date()
     };
 
+    room.players.push(newPlayerEntry);
+    evaluateRoomReadiness(room);
+
     if (isDbConnected) {
-      room.players.push(newPlayerEntry);
       await room.save();
-      logger.info(`[RoomService] Player ${player.nickname} joined room ${cleanCode} in DB (${room.players.length}/${room.maxPlayers})`);
+      logger.info(`[RoomService] Player ${player.nickname} joined room ${cleanCode} in DB (${room.players.length}/${room.maxPlayers}) [Assigned Shade: ${assignedShade.name}]`);
       return sanitizeRoom(room);
     } else {
-      room.players.push(newPlayerEntry);
-      logger.info(`[RoomService] Player ${player.nickname} joined room ${cleanCode} in memory (${room.players.length}/${room.maxPlayers})`);
+      logger.info(`[RoomService] Player ${player.nickname} joined room ${cleanCode} in memory (${room.players.length}/${room.maxPlayers}) [Assigned Shade: ${assignedShade.name}]`);
       return sanitizeRoom(room);
     }
   },
 
   /**
+   * Toggles readiness for a non-host player.
+   */
+  setPlayerReady: async ({ code, playerId, isReady }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const player = room.players.find((p) => p.playerId === playerId);
+    if (!player) {
+      const err = new Error('Player not found in this room.');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Host readiness is always true; non-hosts can toggle
+    if (!player.isHost) {
+      player.isReady = Boolean(isReady);
+    } else {
+      player.isReady = true;
+    }
+
+    evaluateRoomReadiness(room);
+
+    if (isDbConnected) {
+      await room.save();
+    }
+
+    logger.info(`[RoomService] Player ${player.nickname} ready state in room ${cleanCode}: ${player.isReady} (Room status: ${room.status})`);
+    return { room: sanitizeRoom(room), player };
+  },
+
+  /**
+   * Host kicks a target player from the room.
+   */
+  kickPlayer: async ({ code, hostPlayerId, targetPlayerId }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.hostId !== hostPlayerId) {
+      const err = new Error('Only the room host can remove players.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    if (hostPlayerId === targetPlayerId) {
+      const err = new Error('Host cannot kick themselves from the room.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const targetIndex = room.players.findIndex((p) => p.playerId === targetPlayerId);
+    if (targetIndex === -1) {
+      const err = new Error('Target player is not in this room.');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const kickedPlayer = room.players[targetIndex];
+    room.players.splice(targetIndex, 1);
+
+    evaluateRoomReadiness(room);
+
+    if (isDbConnected) {
+      await room.save();
+    }
+
+    logger.info(`[RoomService] Host ${room.hostNickname} kicked player ${kickedPlayer.nickname} from room ${cleanCode}`);
+    return { room: sanitizeRoom(room), kickedPlayer };
+  },
+
+  /**
+   * Host starts the match.
+   * Validates:
+   * - Host authorization
+   * - Min 2 players
+   * - All non-host players ready
+   * - Room in WAITING or READY state
+   */
+  startMatch: async ({ code, hostPlayerId }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (room.hostId !== hostPlayerId) {
+      const err = new Error('Only the room host can start the match.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    if (room.players.length < 2) {
+      const err = new Error('Cannot start match with fewer than two players.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const unreadyPlayers = room.players.filter((p) => !p.isHost && !p.isReady);
+    if (unreadyPlayers.length > 0) {
+      const names = unreadyPlayers.map((p) => p.nickname).join(', ');
+      const err = new Error(`Cannot start match: waiting for ${names} to get ready.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (room.status === ROOM_STATUS.STARTING || room.status === ROOM_STATUS.PLAYING) {
+      const err = new Error('Match has already started.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    room.status = ROOM_STATUS.STARTING;
+
+    if (isDbConnected) {
+      await room.save();
+    }
+
+    logger.info(`[RoomService] Host ${room.hostNickname} started match for room ${cleanCode}! Transitioned to STARTING.`);
+    return sanitizeRoom(room);
+  },
+
+  /**
    * Leaves a room.
-   * If host leaves, automatically reassigns host to the next player.
-   * If no players remain, room is cleaned up / cancelled.
    */
   leaveRoom: async ({ code, playerId }) => {
     const cleanCode = (code || '').toUpperCase().trim();
     const isDbConnected = getDatabaseStatus().connected;
+
+    // Clear any disconnect timer
+    if (disconnectGraceTimers.has(playerId)) {
+      clearTimeout(disconnectGraceTimers.get(playerId));
+      disconnectGraceTimers.delete(playerId);
+    }
 
     let room = null;
     if (isDbConnected) {
@@ -441,21 +675,79 @@ export const roomService = {
         inMemoryRooms.delete(cleanCode);
       }
       logger.info(`[RoomService] Room ${cleanCode} is now empty and has been cleaned up.`);
-      return { code: cleanCode, status: ROOM_STATUS.CANCELLED, message: 'Room empty and cleaned up.' };
+      return { code: cleanCode, status: ROOM_STATUS.CANCELLED, message: 'Room empty and cleaned up.', leavingPlayer };
     }
 
     // Reassign host if previous host left
     if (wasHost) {
       room.players[0].isHost = true;
+      room.players[0].isReady = true;
       room.hostId = room.players[0].playerId;
       room.hostNickname = room.players[0].nickname;
       logger.info(`[RoomService] Host left. Reassigned host of room ${cleanCode} to ${room.players[0].nickname}`);
     }
 
+    evaluateRoomReadiness(room);
+
     if (isDbConnected) {
       await room.save();
     }
 
-    return sanitizeRoom(room);
+    return { ...sanitizeRoom(room), leavingPlayer };
+  },
+
+  /**
+   * Handles socket disconnect with a grace period timer to allow clean reconnects.
+   */
+  handleSocketDisconnect: async (socketId, onPlayerLeftCallback) => {
+    const isDbConnected = getDatabaseStatus().connected;
+
+    // Search room where this socketId is present
+    let targetRoom = null;
+    let targetPlayer = null;
+
+    if (isDbConnected) {
+      targetRoom = await Room.findOne({ 'players.socketId': socketId });
+      if (targetRoom) {
+        targetPlayer = targetRoom.players.find((p) => p.socketId === socketId);
+      }
+    } else {
+      for (const room of inMemoryRooms.values()) {
+        const found = room.players.find((p) => p.socketId === socketId);
+        if (found) {
+          targetRoom = room;
+          targetPlayer = found;
+          break;
+        }
+      }
+    }
+
+    if (!targetRoom || !targetPlayer) return;
+
+    // Mark as offline immediately
+    targetPlayer.isOnline = false;
+    targetPlayer.lastActiveAt = new Date();
+    if (isDbConnected) await targetRoom.save();
+
+    logger.info(`[RoomService] Player ${targetPlayer.nickname} temporarily disconnected from room ${targetRoom.code}. Starting ${DISCONNECT_GRACE_PERIOD_MS / 1000}s grace timer...`);
+
+    // Set grace timer
+    const timer = setTimeout(async () => {
+      disconnectGraceTimers.delete(targetPlayer.playerId);
+      logger.info(`[RoomService] Disconnect grace timer expired for player ${targetPlayer.nickname}. Evicting from room ${targetRoom.code}...`);
+      try {
+        const result = await roomService.leaveRoom({
+          code: targetRoom.code,
+          playerId: targetPlayer.playerId
+        });
+        if (typeof onPlayerLeftCallback === 'function') {
+          onPlayerLeftCallback(targetRoom.code, targetPlayer, result);
+        }
+      } catch (err) {
+        logger.error(`[RoomService] Error evicting disconnected player:`, err.message);
+      }
+    }, DISCONNECT_GRACE_PERIOD_MS);
+
+    disconnectGraceTimers.set(targetPlayer.playerId, timer);
   }
 };

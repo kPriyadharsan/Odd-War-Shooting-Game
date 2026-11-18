@@ -8,6 +8,7 @@ import { PublicRoomsPage } from './pages/rooms/PublicRoomsPage.jsx';
 import { CreateRoomPage } from './pages/rooms/CreateRoomPage.jsx';
 import { JoinRoomPage } from './pages/rooms/JoinRoomPage.jsx';
 import { RoomSummaryPage } from './pages/rooms/RoomSummaryPage.jsx';
+import { WaitingRoomPage } from './pages/rooms/WaitingRoomPage.jsx';
 import { DesignSystemPreview } from './pages/DesignSystemPreview.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
@@ -33,7 +34,9 @@ export function App() {
           <Route path="rooms/public" element={<PublicRoomsPage />} />
           <Route path="rooms/create" element={<CreateRoomPage />} />
           <Route path="rooms/join" element={<JoinRoomPage />} />
-          <Route path="rooms/:code" element={<RoomSummaryPage />} />
+          <Route path="rooms/:code" element={<WaitingRoomPage />} />
+          <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
+          <Route path="rooms/:code/summary" element={<RoomSummaryPage />} />
 
           {/* Design System Preview (Task 02) */}
           <Route path="design-system" element={<DesignSystemPreview />} />

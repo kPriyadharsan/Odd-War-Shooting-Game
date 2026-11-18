@@ -73,5 +73,38 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to update room settings');
     return data.data.room;
+  },
+
+  setPlayerReady: async ({ code, playerId, isReady }) => {
+    const res = await fetch(`${API_BASE}/${code}/ready`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, isReady })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update ready state');
+    return data.data;
+  },
+
+  kickPlayer: async ({ code, hostPlayerId, targetPlayerId }) => {
+    const res = await fetch(`${API_BASE}/${code}/kick`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hostPlayerId, targetPlayerId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to kick player');
+    return data.data;
+  },
+
+  startMatch: async ({ code, hostPlayerId }) => {
+    const res = await fetch(`${API_BASE}/${code}/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hostPlayerId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to start match');
+    return data.data.room;
   }
 };
