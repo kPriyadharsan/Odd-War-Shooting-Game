@@ -97,15 +97,24 @@ export const ProfileSetupPage = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-4 rounded-xl bg-[#F0F7F3] border-2 border-[#2E8557] text-[#2E8557] text-sm flex items-center justify-between shadow-sketch-sm"
+            className="mb-8 p-4 rounded-xl bg-[#F0F7F3] border-2 border-[#2E8557] text-[#2E8557] text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sketch-sm"
           >
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
               <span className="font-medium">{saveSuccessMessage}</span>
             </div>
-            <span className="text-xs font-mono bg-white px-2 py-0.5 rounded border border-[#2E8557]/40">
-              DRAFT SAVED
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono bg-white px-2 py-0.5 rounded border border-[#2E8557]/40">
+                DRAFT SAVED
+              </span>
+              <button
+                type="button"
+                onClick={() => window.location.href = '/rooms'}
+                className="px-3 py-1 rounded-lg bg-[#23252A] text-white text-xs font-sans font-medium hover:bg-[#2E8557] transition-colors cursor-pointer"
+              >
+                Proceed to Rooms &rarr;
+              </button>
+            </div>
           </motion.div>
         )}
 

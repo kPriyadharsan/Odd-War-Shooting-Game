@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Pencil, User } from 'lucide-react';
+import { Pencil, User, LayoutGrid } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket.js';
 
 export const Navbar = () => {
@@ -9,6 +9,7 @@ export const Navbar = () => {
 
   const isHome = location.pathname === '/';
   const isProfile = location.pathname === '/profile-setup';
+  const isRooms = location.pathname.startsWith('/rooms');
   const isDesignSystem = location.pathname === '/design-system';
 
   const handleHowToPlay = (e) => {
@@ -52,6 +53,18 @@ export const Navbar = () => {
             </Link>
 
             <Link
+              to="/rooms"
+              className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                isRooms
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Rooms</span>
+            </Link>
+
+            <Link
               to="/profile-setup"
               className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
                 isProfile
@@ -62,23 +75,6 @@ export const Navbar = () => {
               <User className="w-3.5 h-3.5" />
               <span>Profile</span>
             </Link>
-
-            {isHome ? (
-              <a
-                href="#how-it-works"
-                onClick={handleHowToPlay}
-                className="hidden sm:inline-block px-2.5 py-1.5 rounded-lg border border-transparent text-[#5C6069] hover:border-[#D5CFC3] hover:bg-[#FAF6EC] transition-all"
-              >
-                How It Works
-              </a>
-            ) : (
-              <Link
-                to="/#how-it-works"
-                className="hidden sm:inline-block px-2.5 py-1.5 rounded-lg border border-transparent text-[#5C6069] hover:border-[#D5CFC3] hover:bg-[#FAF6EC] transition-all"
-              >
-                How It Works
-              </Link>
-            )}
 
             <Link
               to="/design-system"
