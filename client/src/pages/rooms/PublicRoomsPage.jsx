@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Globe2, RefreshCw, Users, PlusCircle, Search, ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+import { Globe2, RefreshCw, Users, PlusCircle, Search, ArrowLeft, ArrowRight, AlertCircle, BookOpen } from 'lucide-react';
 import {
   NotebookBackground,
   Button,
@@ -189,9 +189,15 @@ export const PublicRoomsPage = () => {
                   <div>
                     {/* Header: Code & Status */}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#EFE8DA] border border-[#D5CFC3] text-[#23252A]">
-                        {room.code}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#EFE8DA] border border-[#D5CFC3] text-[#23252A]">
+                          {room.code}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#FCFAF3] border border-[#D5CFC3] text-[#5C6069]">
+                          <BookOpen className="w-3 h-3 text-[#2B68B4]" />
+                          <span>{room.bookPageCount || 100}p</span>
+                        </span>
+                      </div>
                       <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#F0F7F3] border border-[#2E8557]/30 text-[#2E8557] font-semibold">
                         {room.status}
                       </span>

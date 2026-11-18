@@ -6,22 +6,22 @@ const API_BASE = `${config.apiUrl}/rooms`;
  * REST Client for ODD WARS Room Management
  */
 export const roomApi = {
-  createPublicRoom: async ({ name, maxPlayers = 4, player }) => {
+  createPublicRoom: async ({ name, maxPlayers = 4, bookPageCount = 100, player }) => {
     const res = await fetch(`${API_BASE}/public`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, maxPlayers, player })
+      body: JSON.stringify({ name, maxPlayers, bookPageCount, player })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to create public room');
     return data.data.room;
   },
 
-  createPrivateRoom: async ({ name, password, maxPlayers = 4, player }) => {
+  createPrivateRoom: async ({ name, password, maxPlayers = 4, bookPageCount = 100, player }) => {
     const res = await fetch(`${API_BASE}/private`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, password, maxPlayers, player })
+      body: JSON.stringify({ name, password, maxPlayers, bookPageCount, player })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to create private room');
@@ -62,5 +62,16 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to leave room');
     return data.data;
+  },
+
+  updateRoomSettings: async ({ code, hostPlayerId, settings }) => {
+    const res = await fetch(`${API_BASE}/${code}/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hostPlayerId, settings })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update room settings');
+    return data.data.room;
   }
 };

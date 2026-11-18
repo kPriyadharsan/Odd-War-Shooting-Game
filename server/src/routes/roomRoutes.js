@@ -5,7 +5,9 @@ import {
   listPublicRooms,
   getRoomByCode,
   joinRoom,
-  leaveRoom
+  leaveRoom,
+  updateRoomSettings,
+  drawRoomBookPage
 } from '../controllers/roomController.js';
 
 const router = Router();
@@ -21,5 +23,9 @@ router.post('/private', createPrivateRoom);
 router.post('/join', joinRoom);
 router.get('/:code', getRoomByCode);
 router.post('/:code/leave', leaveRoom);
+
+// Host settings & Book Engine compatibility
+router.patch('/:code/settings', updateRoomSettings);
+router.post('/:code/draw-page', drawRoomBookPage);
 
 export default router;

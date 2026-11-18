@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { roomService } from '../services/roomService.js';
+import { BookEngine } from '../game-engine/BookEngine.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 // Zod Validation Schemas
@@ -11,15 +12,26 @@ const playerSchema = z.object({
 
 const createPublicSchema = z.object({
   name: z.string().min(3, 'Room name must be at least 3 characters').max(32, 'Room name cannot exceed 32 characters'),
-  maxPlayers: z.number().int().min(2).max(4).default(4),
+  maxPlayers: z.number().int().refine(n => [2, 3, 4].includes(n), { message: 'Player capacity must be 2, 3, or 4 players' }).default(4),
+  bookPageCount: z.number().int().refine(n => [100, 200].includes(n), { message: 'Book page count must be either 100 or 200 pages' }).default(100),
   player: playerSchema
 });
 
 const createPrivateSchema = z.object({
   name: z.string().min(3, 'Room name must be at least 3 characters').max(32, 'Room name cannot exceed 32 characters'),
   password: z.string().min(3, 'Password must be at least 3 characters').max(32, 'Password cannot exceed 32 characters'),
-  maxPlayers: z.number().int().min(2).max(4).default(4),
+  maxPlayers: z.number().int().refine(n => [2, 3, 4].includes(n), { message: 'Player capacity must be 2, 3, or 4 players' }).default(4),
+  bookPageCount: z.number().int().refine(n => [100, 200].includes(n), { message: 'Book page count must be either 100 or 200 pages' }).default(100),
   player: playerSchema
+});
+
+const updateSettingsSchema = z.object({
+  hostPlayerId: z.string().min(1, 'Host player ID is required to modify room settings'),
+  settings: z.object({
+    name: z.string().min(3).max(32).optional(),
+    maxPlayers: z.number().int().refine(n => [2, 3, 4].includes(n), { message: 'Player capacity must be 2, 3, or 4 players' }).optional(),
+    bookPageCount: z.number().int().refine(n => [100, 200].includes(n), { message: 'Book page count must be either 100 or 200 pages' }).optional()
+  })
 });
 
 const joinRoomSchema = z.object({
@@ -35,11 +47,12 @@ export const createPublicRoom = async (req, res, next) => {
       return sendError(res, parsed.error.errors[0].message, 400);
     }
 
-    const { name, maxPlayers, player } = parsed.data;
-    const room = await roomService.createPublicRoom({ name, hostPlayer: player, maxPlayers });
+    const { name, maxPlayers, bookPageCount, player } = parsed.data;
+    const room = await roomService.createPublicRoom({ name, hostPlayer: player, maxPlayers, bookPageCount });
     return sendSuccess(res, { room }, 'Public room created successfully', 201);
   } catch (err) {
-    next(err);
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
   }
 };
 
@@ -50,11 +63,29 @@ export const createPrivateRoom = async (req, res, next) => {
       return sendError(res, parsed.error.errors[0].message, 400);
     }
 
-    const { name, password, maxPlayers, player } = parsed.data;
-    const room = await roomService.createPrivateRoom({ name, password, hostPlayer: player, maxPlayers });
+    const { name, password, maxPlayers, bookPageCount, player } = parsed.data;
+    const room = await roomService.createPrivateRoom({ name, password, hostPlayer: player, maxPlayers, bookPageCount });
     return sendSuccess(res, { room }, 'Private room created successfully', 201);
   } catch (err) {
-    next(err);
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+export const updateRoomSettings = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const parsed = updateSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(res, parsed.error.errors[0].message, 400);
+    }
+
+    const { hostPlayerId, settings } = parsed.data;
+    const updated = await roomService.updateRoomSettings({ code, hostPlayerId, settings });
+    return sendSuccess(res, { room: updated }, 'Room settings updated successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
   }
 };
 
@@ -115,5 +146,26 @@ export const leaveRoom = async (req, res, next) => {
   } catch (err) {
     const statusCode = err.statusCode || 500;
     return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
+ * Server-authoritative random book page draw endpoint
+ * Validates that drawing uses the room's configured bookPageCount
+ */
+export const drawRoomBookPage = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId } = req.body;
+
+    const room = await roomService.getRoomByCode(code);
+    if (!room) {
+      return sendError(res, `Room with code "${code.toUpperCase()}" not found`, 404);
+    }
+
+    const outcome = BookEngine.drawPage(room.bookPageCount, playerId);
+    return sendSuccess(res, { outcome }, 'Server drew random book page');
+  } catch (err) {
+    next(err);
   }
 };

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { Room, ROOM_STATUS } from '../models/Room.js';
+import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS } from '../models/Room.js';
 import { getDatabaseStatus } from '../config/database.js';
 import { logger } from '../utils/logger.js';
 
@@ -34,6 +34,15 @@ export const sanitizeRoom = (room) => {
   return raw;
 };
 
+/**
+ * Generates an independent vertical territory model with rows 1, 3, 5, 7, 9.
+ */
+export const createTerritory = (slotIndex) => ({
+  territoryId: `territory_slot_${slotIndex}`,
+  slotIndex,
+  rows: [...TERRITORY_ROWS]
+});
+
 export const roomService = {
   /**
    * Generates a collision-safe room code.
@@ -62,11 +71,21 @@ export const roomService = {
   },
 
   /**
-   * Creates a Public Room.
+   * Creates a Public Room with host-configured maxPlayers (2-4) and bookPageCount (100 or 200).
    */
-  createPublicRoom: async ({ name, hostPlayer, maxPlayers = 4 }) => {
+  createPublicRoom: async ({ name, hostPlayer, maxPlayers = 4, bookPageCount = 100 }) => {
     const code = await roomService.getUniqueRoomCode();
     const isDbConnected = getDatabaseStatus().connected;
+
+    const parsedCapacity = parseInt(maxPlayers, 10);
+    const validCapacity = ALLOWED_PLAYER_CAPACITIES.includes(parsedCapacity) ? parsedCapacity : 4;
+
+    const parsedPages = parseInt(bookPageCount, 10);
+    if (!ALLOWED_PAGE_COUNTS.includes(parsedPages)) {
+      const err = new Error('Book page count must be either 100 or 200 pages.');
+      err.statusCode = 400;
+      throw err;
+    }
 
     const hostEntry = {
       playerId: hostPlayer.playerId,
@@ -75,6 +94,7 @@ export const roomService = {
       slotIndex: 0,
       isHost: true,
       isReady: false,
+      territory: createTerritory(0),
       joinedAt: new Date()
     };
 
@@ -83,7 +103,8 @@ export const roomService = {
       name: name.trim(),
       isPrivate: false,
       passwordHash: null,
-      maxPlayers: Math.min(Math.max(parseInt(maxPlayers, 10) || 4, 2), 4),
+      maxPlayers: validCapacity,
+      bookPageCount: parsedPages,
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
@@ -92,26 +113,38 @@ export const roomService = {
 
     if (isDbConnected) {
       const room = await Room.create(roomData);
-      logger.info(`[RoomService] Public room created in DB: ${code} (${room.name}) by ${hostPlayer.nickname}`);
+      logger.info(`[RoomService] Public room created in DB: ${code} (${room.name}) [Pages: ${room.bookPageCount}, Max: ${room.maxPlayers}] by ${hostPlayer.nickname}`);
       return sanitizeRoom(room);
     } else {
       inMemoryRooms.set(code, roomData);
-      logger.info(`[RoomService] Public room created in memory: ${code} (${roomData.name}) by ${hostPlayer.nickname}`);
+      logger.info(`[RoomService] Public room created in memory: ${code} (${roomData.name}) [Pages: ${roomData.bookPageCount}, Max: ${roomData.maxPlayers}] by ${hostPlayer.nickname}`);
       return sanitizeRoom(roomData);
     }
   },
 
   /**
-   * Creates a Private Room with Password.
+   * Creates a Private Room with Password and host-configured settings.
    */
-  createPrivateRoom: async ({ name, password, hostPlayer, maxPlayers = 4 }) => {
+  createPrivateRoom: async ({ name, password, hostPlayer, maxPlayers = 4, bookPageCount = 100 }) => {
     if (!password || password.trim().length === 0) {
-      throw new Error('A private room requires a password.');
+      const err = new Error('A private room requires a password.');
+      err.statusCode = 400;
+      throw err;
     }
 
     const code = await roomService.getUniqueRoomCode();
     const passwordHash = await bcrypt.hash(password.trim(), 10);
     const isDbConnected = getDatabaseStatus().connected;
+
+    const parsedCapacity = parseInt(maxPlayers, 10);
+    const validCapacity = ALLOWED_PLAYER_CAPACITIES.includes(parsedCapacity) ? parsedCapacity : 4;
+
+    const parsedPages = parseInt(bookPageCount, 10);
+    if (!ALLOWED_PAGE_COUNTS.includes(parsedPages)) {
+      const err = new Error('Book page count must be either 100 or 200 pages.');
+      err.statusCode = 400;
+      throw err;
+    }
 
     const hostEntry = {
       playerId: hostPlayer.playerId,
@@ -120,6 +153,7 @@ export const roomService = {
       slotIndex: 0,
       isHost: true,
       isReady: false,
+      territory: createTerritory(0),
       joinedAt: new Date()
     };
 
@@ -128,7 +162,8 @@ export const roomService = {
       name: name.trim(),
       isPrivate: true,
       passwordHash,
-      maxPlayers: Math.min(Math.max(parseInt(maxPlayers, 10) || 4, 2), 4),
+      maxPlayers: validCapacity,
+      bookPageCount: parsedPages,
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
@@ -137,13 +172,94 @@ export const roomService = {
 
     if (isDbConnected) {
       const room = await Room.create(roomData);
-      logger.info(`[RoomService] Private room created in DB: ${code} (${room.name})`);
+      logger.info(`[RoomService] Private room created in DB: ${code} (${room.name}) [Pages: ${room.bookPageCount}, Max: ${room.maxPlayers}]`);
       return sanitizeRoom(room);
     } else {
       inMemoryRooms.set(code, roomData);
-      logger.info(`[RoomService] Private room created in memory: ${code} (${roomData.name})`);
+      logger.info(`[RoomService] Private room created in memory: ${code} (${roomData.name}) [Pages: ${roomData.bookPageCount}, Max: ${roomData.maxPlayers}]`);
       return sanitizeRoom(roomData);
     }
+  },
+
+  /**
+   * Updates host-controlled room settings (bookPageCount, maxPlayers, name).
+   * Strictly enforces that only the host can update settings and only in WAITING status.
+   */
+  updateRoomSettings: async ({ code, hostPlayerId, settings = {} }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Host identity check
+    if (room.hostId !== hostPlayerId) {
+      const err = new Error('Only the room host can configure game settings.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // State check
+    if (room.status !== ROOM_STATUS.WAITING) {
+      const err = new Error(`Cannot change settings while room is ${room.status.toLowerCase()}.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Validate bookPageCount if passed
+    if (settings.bookPageCount !== undefined) {
+      const pages = parseInt(settings.bookPageCount, 10);
+      if (!ALLOWED_PAGE_COUNTS.includes(pages)) {
+        const err = new Error('Book page count must be either 100 or 200 pages.');
+        err.statusCode = 400;
+        throw err;
+      }
+      room.bookPageCount = pages;
+    }
+
+    // Validate maxPlayers if passed
+    if (settings.maxPlayers !== undefined) {
+      const capacity = parseInt(settings.maxPlayers, 10);
+      if (!ALLOWED_PLAYER_CAPACITIES.includes(capacity)) {
+        const err = new Error('Player capacity must be 2, 3, or 4 players.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (capacity < room.players.length) {
+        const err = new Error(`Cannot set capacity to ${capacity}: room already has ${room.players.length} players joined.`);
+        err.statusCode = 400;
+        throw err;
+      }
+      room.maxPlayers = capacity;
+    }
+
+    // Validate name if passed
+    if (settings.name !== undefined) {
+      const cleanName = settings.name.trim();
+      if (cleanName.length < 3 || cleanName.length > 32) {
+        const err = new Error('Room name must be between 3 and 32 characters.');
+        err.statusCode = 400;
+        throw err;
+      }
+      room.name = cleanName;
+    }
+
+    if (isDbConnected) {
+      await room.save();
+    }
+
+    logger.info(`[RoomService] Host updated settings for room ${cleanCode}: Book pages=${room.bookPageCount}, Max players=${room.maxPlayers}`);
+    return sanitizeRoom(room);
   },
 
   /**
@@ -153,7 +269,6 @@ export const roomService = {
     const isDbConnected = getDatabaseStatus().connected;
 
     if (isDbConnected) {
-      // Find public rooms where status is WAITING and player count < maxPlayers
       const rooms = await Room.find({
         isPrivate: false,
         status: ROOM_STATUS.WAITING,
@@ -201,7 +316,6 @@ export const roomService = {
     let rawPasswordHash = null;
 
     if (isDbConnected) {
-      // Select passwordHash explicitly to verify private rooms
       room = await Room.findOne({ code: cleanCode }).select('+passwordHash');
       if (room) rawPasswordHash = room.passwordHash;
     } else {
@@ -253,7 +367,7 @@ export const roomService = {
       }
     }
 
-    // 5. Assign Next Available Slot (0..3)
+    // 5. Assign Next Available Slot (0..3) & Setup Territory
     const takenSlots = new Set(room.players.map((p) => p.slotIndex));
     let nextSlot = 0;
     while (takenSlots.has(nextSlot) && nextSlot < 4) {
@@ -267,6 +381,7 @@ export const roomService = {
       slotIndex: nextSlot,
       isHost: false,
       isReady: false,
+      territory: createTerritory(nextSlot),
       joinedAt: new Date()
     };
 

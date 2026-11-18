@@ -5,20 +5,18 @@ import {
   Globe2,
   Lock,
   ArrowLeft,
-  Check,
-  Copy,
+  BookOpen,
   Users,
-  ShieldAlert,
   Sparkles,
   Eye,
-  EyeOff
+  EyeOff,
+  Crown
 } from 'lucide-react';
 import {
   NotebookBackground,
   Button,
   Card,
-  Input,
-  SectionHeading
+  Input
 } from '../../components/ui/index.js';
 import { roomApi } from '../../services/roomApi.js';
 import { getPlayerSession } from '../../store/playerSession.js';
@@ -34,6 +32,7 @@ export const CreateRoomPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [maxPlayers, setMaxPlayers] = useState(4);
+  const [bookPageCount, setBookPageCount] = useState(100); // 100 | 200
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -59,12 +58,14 @@ export const CreateRoomPage = () => {
           name: name.trim(),
           password: password.trim(),
           maxPlayers,
+          bookPageCount,
           player
         });
       } else {
         createdRoom = await roomApi.createPublicRoom({
           name: name.trim(),
           maxPlayers,
+          bookPageCount,
           player
         });
       }
@@ -104,7 +105,7 @@ export const CreateRoomPage = () => {
           </h1>
 
           <p className="mt-2 text-sm sm:text-base text-[#5C6069] font-sans">
-            Set up your room name, choose capacity, and protect it with a secret password if you want a private match.
+            Set up your room name, choose capacity, pick your book page count, and configure private passwords.
           </p>
         </header>
 
@@ -197,7 +198,7 @@ export const CreateRoomPage = () => {
                     placeholder="Enter 3-32 character password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    helperText="Never stored or displayed in plain text"
+                    helperText="Never stored or displayed in plain text (bcrypt hashed)"
                   />
                   <button
                     type="button"
@@ -211,10 +212,70 @@ export const CreateRoomPage = () => {
               </motion.div>
             )}
 
-            {/* 4. Player Capacity Selector (2-4 players) */}
+            {/* 4. Book Page Count (100 vs 200 Pages) - Host Configured */}
             <div>
               <label className="text-xs uppercase tracking-wider font-semibold text-[#5C6069] flex items-center justify-between mb-2">
-                <span>Maximum Warriors</span>
+                <span className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#2B68B4]" />
+                  <span>Book Page Count (Game Engine Setting)</span>
+                </span>
+                <span className="text-[11px] font-mono font-normal text-[#8E949F]">100 or 200 Pages</span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBookPageCount(100)}
+                  className={`p-3.5 rounded-xl border text-left transition-all select-none cursor-pointer ${
+                    bookPageCount === 100
+                      ? 'border-2 border-[#23252A] bg-[#FFFDF9] shadow-sketch'
+                      : 'border-[#D5CFC3] bg-[#FCFAF3] hover:border-[#9C9486]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-handwriting font-bold text-2xl text-[#23252A]">
+                      100 Pages
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#EFE8DA] text-[#5C6069]">
+                      STANDARD
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#5C6069] font-sans">
+                    Standard exercise book. Server draws pages 1–100.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBookPageCount(200)}
+                  className={`p-3.5 rounded-xl border text-left transition-all select-none cursor-pointer ${
+                    bookPageCount === 200
+                      ? 'border-2 border-[#23252A] bg-[#FFFDF9] shadow-sketch'
+                      : 'border-[#D5CFC3] bg-[#FCFAF3] hover:border-[#9C9486]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-handwriting font-bold text-2xl text-[#23252A]">
+                      200 Pages
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FCF8EE] text-[#D59926] font-bold">
+                      EXTENDED
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#5C6069] font-sans">
+                    Thick notebook. Server draws pages 1–200.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* 5. Player Capacity Selector (2-4 players) */}
+            <div>
+              <label className="text-xs uppercase tracking-wider font-semibold text-[#5C6069] flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#2E8557]" />
+                  <span>Maximum Players</span>
+                </span>
                 <span className="text-[11px] font-mono font-normal text-[#8E949F]">2 to 4 Players</span>
               </label>
 
@@ -236,7 +297,7 @@ export const CreateRoomPage = () => {
                         {count} Players
                       </div>
                       <div className="text-[10px] font-mono text-[#5C6069]">
-                        {count === 4 ? 'Full Squad' : count === 2 ? 'Duel 1v1' : 'Trio Skirmish'}
+                        {count === 4 ? 'Full Squad' : count === 2 ? 'Duel (1v1)' : 'Trio Skirmish'}
                       </div>
                     </button>
                   );
@@ -244,9 +305,12 @@ export const CreateRoomPage = () => {
               </div>
             </div>
 
-            {/* 5. Host Identity Badge */}
+            {/* 6. Host Identity Badge */}
             <div className="p-3.5 rounded-xl bg-[#FCFAF3] border border-[#D5CFC3] flex items-center justify-between text-xs font-mono">
-              <span className="text-[#5C6069]">Hosting As:</span>
+              <span className="text-[#5C6069] flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-[#D59926]" />
+                <span>Host Commander:</span>
+              </span>
               <div className="flex items-center gap-2">
                 <span
                   className="w-2.5 h-2.5 rounded-full"
