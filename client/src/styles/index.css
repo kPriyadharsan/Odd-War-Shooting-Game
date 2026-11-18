@@ -3,31 +3,93 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
-  background-color: #0B0F19;
-  color: #F8FAFC;
+  background-color: #F8F4EB;
+  color: #23252A;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
 }
 
-/* Custom cyber-themed scrollbar */
+/* Notebook ruling utilities */
+.notebook-paper {
+  background-color: #F8F4EB;
+  background-image: 
+    /* Red vertical margin line (desktop ~64px, responsive) */
+    linear-gradient(to right, transparent 63px, rgba(215, 80, 80, 0.18) 64px, transparent 65px),
+    /* Blue/grey horizontal ruled lines (28px line-height) */
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(130, 155, 185, 0.12) 28px);
+  background-attachment: local;
+}
+
+/* Mobile variant with tighter margin */
+@media (max-width: 640px) {
+  .notebook-paper {
+    background-image: 
+      linear-gradient(to right, transparent 35px, rgba(215, 80, 80, 0.18) 36px, transparent 37px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(130, 155, 185, 0.12) 28px);
+  }
+}
+
+/* Subtle card paper ruling (no vertical margin) */
+.card-ruled {
+  background-color: #FCFAF3;
+  background-image: repeating-linear-gradient(to bottom, transparent 0px, transparent 25px, rgba(130, 155, 185, 0.08) 26px);
+}
+
+/* Subtle hand-drawn border effect */
+.border-sketch {
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: #D5CFC3;
+  border-radius: 8px;
+}
+
+.border-sketch-dark {
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: #23252A;
+  border-radius: 8px;
+}
+
+/* Washi tape accent for paper cards */
+.tape-top-center {
+  position: relative;
+}
+.tape-top-center::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  width: 50px;
+  height: 18px;
+  background: rgba(225, 218, 195, 0.65);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  border-left: 2px dashed rgba(200, 190, 170, 0.5);
+  border-right: 2px dashed rgba(200, 190, 170, 0.5);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Custom warm pencil scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F19;
+  background: #F8F4EB;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #D5CFC3;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #9C9486;
 }

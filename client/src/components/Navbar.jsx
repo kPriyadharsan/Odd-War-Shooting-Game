@@ -1,41 +1,105 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Gamepad2, Activity, ShieldAlert, Cpu } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket.js';
 
 export const Navbar = () => {
   const location = useLocation();
   const { isConnected, latency } = useSocket();
 
+  const isHome = location.pathname === '/';
+  const isDesignSystem = location.pathname === '/design-system';
+  const isSystem = location.pathname === '/system';
+
+  const handleHowToPlay = (e) => {
+    if (isHome) {
+      e.preventDefault();
+      const el = document.getElementById('how-it-works');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <header className="border-b border-[#1E293B] bg-[#0B0F19]/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-3 group">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)] group-hover:shadow-[0_0_20px_rgba(6,182,212,0.8)] transition-all">
-            <Gamepad2 className="w-6 h-6 text-white" />
+    <header className="border-b border-[#D5CFC3] bg-[#F8F4EB]/95 backdrop-blur-sm sticky top-0 z-40">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+        {/* Brand Logo & Title */}
+        <Link to="/" className="flex items-center space-x-2.5 group">
+          <div className="w-8 h-8 rounded-lg bg-[#23252A] text-[#F8F4EB] flex items-center justify-center shadow-sketch-sm group-hover:bg-[#2B68B4] transition-colors">
+            <Pencil className="w-4 h-4" />
           </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 font-mono">
+          <div className="flex items-center">
+            <span className="font-handwriting font-bold text-2xl tracking-wide text-[#23252A]">
               ODD WARS
             </span>
-            <span className="hidden sm:inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-cyan-950/60 border border-cyan-800/40 text-cyan-400">
-              v1.0.0-dev
+            <span className="hidden sm:inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[#EFE8DA] border border-[#D5CFC3] text-[#5C6069]">
+              Notebook
             </span>
           </div>
         </Link>
 
-        {/* Real-time connection badge */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-[#131A29] border border-[#1E293B] text-xs font-mono">
+        {/* Navigation items */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <nav className="flex items-center space-x-1 sm:space-x-1.5 text-xs font-sans font-medium">
+            <Link
+              to="/"
+              className={`px-2.5 py-1.5 rounded-lg border transition-all ${
+                isHome
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              Home
+            </Link>
+
+            {isHome ? (
+              <a
+                href="#how-it-works"
+                onClick={handleHowToPlay}
+                className="hidden sm:inline-block px-2.5 py-1.5 rounded-lg border border-transparent text-[#5C6069] hover:border-[#D5CFC3] hover:bg-[#FAF6EC] transition-all"
+              >
+                How It Works
+              </a>
+            ) : (
+              <Link
+                to="/#how-it-works"
+                className="hidden sm:inline-block px-2.5 py-1.5 rounded-lg border border-transparent text-[#5C6069] hover:border-[#D5CFC3] hover:bg-[#FAF6EC] transition-all"
+              >
+                How It Works
+              </Link>
+            )}
+
+            <Link
+              to="/design-system"
+              className={`px-2.5 py-1.5 rounded-lg border transition-all ${
+                isDesignSystem
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              Design System
+            </Link>
+
+            <Link
+              to="/system"
+              className={`hidden md:inline-block px-2.5 py-1.5 rounded-lg border transition-all ${
+                isSystem
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              Status
+            </Link>
+          </nav>
+
+          {/* Real-time Socket Indicator */}
+          <div className="hidden sm:flex items-center space-x-2 px-2.5 py-1 rounded-full bg-[#FFFDF9] border border-[#D5CFC3] text-xs font-mono">
             <span
               className={`w-2 h-2 rounded-full ${
-                isConnected
-                  ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]'
-                  : 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)]'
+                isConnected ? 'bg-[#2E8557]' : 'bg-[#CE4242]'
               }`}
             />
-            <span className={isConnected ? 'text-emerald-400' : 'text-rose-400'}>
-              {isConnected ? `SOCKET ONLINE (${latency !== null ? `${latency}ms` : 'synced'})` : 'SOCKET OFFLINE'}
+            <span className={isConnected ? 'text-[#2E8557]' : 'text-[#CE4242]'}>
+              {isConnected ? `${latency !== null ? `${latency}ms` : '30Hz'}` : 'OFFLINE'}
             </span>
           </div>
         </div>
@@ -43,3 +107,5 @@ export const Navbar = () => {
     </header>
   );
 };
+
+export default Navbar;
