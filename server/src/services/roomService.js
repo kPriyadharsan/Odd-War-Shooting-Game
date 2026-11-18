@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS } from '../models/Room.js';
 import { ShadeService } from './shadeService.js';
+import { BookEngine } from '../game-engine/BookEngine.js';
 import { getDatabaseStatus } from '../config/database.js';
 import { logger } from '../utils/logger.js';
 
@@ -141,7 +142,15 @@ export const roomService = {
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
-      players: [hostEntry]
+      players: [hostEntry],
+      gameState: {
+        turnNumber: 1,
+        activePlayerId: hostPlayer.playerId,
+        activePlayerIndex: 0,
+        isBookFlipping: false,
+        lastFlip: null,
+        history: []
+      }
     };
 
     if (isDbConnected) {
@@ -207,7 +216,15 @@ export const roomService = {
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
-      players: [hostEntry]
+      players: [hostEntry],
+      gameState: {
+        turnNumber: 1,
+        activePlayerId: hostPlayer.playerId,
+        activePlayerIndex: 0,
+        isBookFlipping: false,
+        lastFlip: null,
+        history: []
+      }
     };
 
     if (isDbConnected) {
@@ -619,6 +636,22 @@ export const roomService = {
 
     room.status = ROOM_STATUS.STARTING;
 
+    if (!room.gameState) {
+      room.gameState = {
+        turnNumber: 1,
+        activePlayerId: room.players[0].playerId,
+        activePlayerIndex: 0,
+        isBookFlipping: false,
+        lastFlip: null,
+        history: []
+      };
+    } else {
+      room.gameState.turnNumber = 1;
+      room.gameState.activePlayerId = room.players[0].playerId;
+      room.gameState.activePlayerIndex = 0;
+      room.gameState.isBookFlipping = false;
+    }
+
     if (isDbConnected) {
       await room.save();
     }
@@ -694,6 +727,131 @@ export const roomService = {
     }
 
     return { ...sanitizeRoom(room), leavingPlayer };
+  },
+
+  /**
+   * Server-authoritative book page flip (Task 08)
+   * Validates:
+   * - Room existence
+   * - Active player turn
+   * - Concurrency lock (prevents duplicate simultaneous flips)
+   * Generates cryptographic random page, maps odd rows / even NO ACTION,
+   * stores outcome in history, rotates active player, and returns updated room & outcome.
+   */
+  openBook: async ({ code, playerId, requestId = null }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (!room.players || room.players.length === 0) {
+      const err = new Error('No players found in this room.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Ensure gameState exists
+    if (!room.gameState) {
+      room.gameState = {
+        turnNumber: 1,
+        activePlayerId: room.players[0].playerId,
+        activePlayerIndex: 0,
+        isBookFlipping: false,
+        lastFlip: null,
+        history: []
+      };
+    }
+
+    // If activePlayerId is not set, initialize to first player
+    if (!room.gameState.activePlayerId) {
+      room.gameState.activePlayerId = room.players[0].playerId;
+      room.gameState.activePlayerIndex = 0;
+    }
+
+    // 1. Turn Validation: Only active player can flip the book
+    if (room.gameState.activePlayerId !== playerId) {
+      const activePlayer = room.players.find((p) => p.playerId === room.gameState.activePlayerId);
+      const activeNickname = activePlayer ? activePlayer.nickname : 'another warrior';
+      const err = new Error(`It is not your turn! Currently waiting for ${activeNickname}'s turn.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2. Concurrency Lock: Prevent duplicate requests while flipping
+    if (room.gameState.isBookFlipping) {
+      const err = new Error('The magical book is already flipping! Please wait for the current result.');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    // Set lock
+    room.gameState.isBookFlipping = true;
+
+    try {
+      const currentParticipant = room.players.find((p) => p.playerId === playerId) || { nickname: 'Warrior' };
+      const currentTurnNumber = room.gameState.turnNumber || 1;
+
+      // 3. Cryptographic Draw using room.bookPageCount
+      const outcome = BookEngine.drawPage(
+        room.bookPageCount,
+        playerId,
+        currentParticipant.nickname,
+        currentTurnNumber
+      );
+
+      if (requestId) {
+        outcome.requestId = requestId;
+      }
+
+      // 4. Update Game State & History
+      room.gameState.lastFlip = outcome;
+      if (!Array.isArray(room.gameState.history)) {
+        room.gameState.history = [];
+      }
+      room.gameState.history.unshift(outcome);
+      if (room.gameState.history.length > 50) {
+        room.gameState.history = room.gameState.history.slice(0, 50);
+      }
+
+      // 5. Advance Turn Management (round-robin rotation)
+      const currentIndex = room.players.findIndex((p) => p.playerId === playerId);
+      const nextIndex = (currentIndex + 1) % room.players.length;
+      room.gameState.activePlayerIndex = nextIndex;
+      room.gameState.activePlayerId = room.players[nextIndex].playerId;
+      room.gameState.turnNumber = currentTurnNumber + 1;
+
+      // Release lock
+      room.gameState.isBookFlipping = false;
+
+      if (isDbConnected) {
+        room.markModified('gameState');
+        await room.save();
+      }
+
+      logger.info(
+        `[RoomService] Book opened in ${cleanCode}: Page ${outcome.pageNumber} (${outcome.actionLabel}) by ${currentParticipant.nickname}. Next turn: ${room.players[nextIndex].nickname}`
+      );
+
+      return { room: sanitizeRoom(room), outcome };
+    } catch (err) {
+      room.gameState.isBookFlipping = false;
+      if (isDbConnected) {
+        room.markModified('gameState');
+        await room.save();
+      }
+      throw err;
+    }
   },
 
   /**

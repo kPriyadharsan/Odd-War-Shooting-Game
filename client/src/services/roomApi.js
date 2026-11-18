@@ -106,5 +106,16 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to start match');
     return data.data.room;
+  },
+
+  openBook: async ({ code, playerId, requestId }) => {
+    const res = await fetch(`${API_BASE}/${code}/book/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, requestId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to open magical book');
+    return data.data;
   }
 };

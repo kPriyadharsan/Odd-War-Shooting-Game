@@ -9,6 +9,7 @@ import {
   setPlayerReady,
   kickPlayer,
   startMatch,
+  openRoomBook,
   updateRoomSettings,
   drawRoomBookPage
 } from '../controllers/roomController.js';
@@ -31,6 +32,9 @@ router.post('/:code/leave', leaveRoom);
 router.post('/:code/ready', setPlayerReady);
 router.post('/:code/kick', kickPlayer);
 router.post('/:code/start', startMatch);
+
+// Magical Book & Turn Engine (Task 08)
+router.post('/:code/book/open', openRoomBook);
 
 // Host settings & Book Engine compatibility
 router.patch('/:code/settings', updateRoomSettings);

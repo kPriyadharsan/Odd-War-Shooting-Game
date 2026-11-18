@@ -171,6 +171,32 @@ const roomSchema = new mongoose.Schema(
         (val) => val.length <= 4,
         'A room cannot exceed 4 players'
       ]
+    },
+    gameState: {
+      turnNumber: {
+        type: Number,
+        default: 1
+      },
+      activePlayerId: {
+        type: String,
+        default: null
+      },
+      activePlayerIndex: {
+        type: Number,
+        default: 0
+      },
+      isBookFlipping: {
+        type: Boolean,
+        default: false
+      },
+      lastFlip: {
+        type: Object,
+        default: null
+      },
+      history: {
+        type: [Object],
+        default: []
+      }
     }
   },
   {

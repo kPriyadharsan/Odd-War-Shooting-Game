@@ -215,7 +215,33 @@ export const startMatch = async (req, res, next) => {
 };
 
 /**
- * Server-authoritative random book page draw endpoint
+ * Server-authoritative random book page draw endpoint (Task 08)
+ * Validates active player turn, performs cryptographic draw, and rotates turn.
+ */
+export const openRoomBook = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId, requestId } = req.body;
+
+    if (!code || !playerId) {
+      return sendError(res, 'Room code and playerId are required to open book', 400);
+    }
+
+    const result = await roomService.openBook({
+      code,
+      playerId,
+      requestId
+    });
+
+    return sendSuccess(res, result, 'Magical book opened successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
+ * Legacy server-authoritative random book page draw endpoint
  * Validates that drawing uses the room's configured bookPageCount
  */
 export const drawRoomBookPage = async (req, res, next) => {
