@@ -9,6 +9,7 @@ import { CreateRoomPage } from './pages/rooms/CreateRoomPage.jsx';
 import { JoinRoomPage } from './pages/rooms/JoinRoomPage.jsx';
 import { RoomSummaryPage } from './pages/rooms/RoomSummaryPage.jsx';
 import { WaitingRoomPage } from './pages/rooms/WaitingRoomPage.jsx';
+import { BattlefieldPage } from './pages/rooms/BattlefieldPage.jsx';
 import { DesignSystemPreview } from './pages/DesignSystemPreview.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
@@ -29,7 +30,7 @@ export function App() {
           {/* Player Profile & Character Setup (Task 04) */}
           <Route path="profile-setup" element={<ProfileSetupPage />} />
 
-          {/* Room Management (Task 05) */}
+          {/* Room Management (Task 05 & Task 06) */}
           <Route path="rooms" element={<RoomsDashboard />} />
           <Route path="rooms/public" element={<PublicRoomsPage />} />
           <Route path="rooms/create" element={<CreateRoomPage />} />
@@ -37,6 +38,10 @@ export function App() {
           <Route path="rooms/:code" element={<WaitingRoomPage />} />
           <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
           <Route path="rooms/:code/summary" element={<RoomSummaryPage />} />
+
+          {/* Notebook Battlefield (Task 07) */}
+          <Route path="rooms/:code/battlefield" element={<BattlefieldPage />} />
+          <Route path="rooms/:code/game" element={<BattlefieldPage />} />
 
           {/* Design System Preview (Task 02) */}
           <Route path="design-system" element={<DesignSystemPreview />} />

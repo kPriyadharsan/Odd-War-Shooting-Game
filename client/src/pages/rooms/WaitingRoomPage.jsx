@@ -465,7 +465,7 @@ export const WaitingRoomPage = () => {
         </AnimatePresence>
 
         {/* Match Starting Banner */}
-        {matchStartingBanner && (
+        {(matchStartingBanner || room.status === 'STARTING' || room.status === 'PLAYING') && (
           <motion.div
             initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -475,9 +475,16 @@ export const WaitingRoomPage = () => {
               <Sparkles className="w-5 h-5 animate-spin" />
               <span>MATCH STARTING! ALL WARRIORS ENGAGED!</span>
             </div>
-            <p className="font-mono text-xs text-[#2E8557]/80">
-              Host has triggered the battle sequence. Territories locked for gameplay.
+            <p className="font-mono text-xs text-[#2E8557]/80 mb-3">
+              Host has triggered the battle sequence. Territories are prepared for the notebook battlefield.
             </p>
+            <Link
+              to={`/rooms/${room.code}/battlefield`}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-sm shadow-sm transition-transform active:scale-95"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Enter Notebook Battlefield Arena</span>
+            </Link>
           </motion.div>
         )}
 
