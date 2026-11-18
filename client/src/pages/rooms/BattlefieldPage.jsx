@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,7 +11,8 @@ import {
   Clock,
   Layers,
   Crown,
-  Info
+  Info,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -25,6 +26,7 @@ import { SoundControls } from '../../components/ui/SoundControls.jsx';
 import { NotebookBattlefieldArena } from '../../components/battlefield/NotebookBattlefieldArena.jsx';
 import { MagicalBookStage } from '../../components/book/MagicalBookStage.jsx';
 import { ResultHistoryPanel } from '../../components/book/ResultHistoryPanel.jsx';
+import { CharacterDrawingModal } from '../../components/drawing/CharacterDrawingModal.jsx';
 import { roomApi } from '../../services/roomApi.js';
 import { getSocket } from '../../services/socket.js';
 import { soundEffects } from '../../services/soundEffects.js';
@@ -50,13 +52,20 @@ export const BattlefieldPage = () => {
   const [bookActionLoading, setBookActionLoading] = useState(false);
   const [bookError, setBookError] = useState(null);
 
+  // Manual Drawing Engine State (Task 09)
+  const [isDrawingModalOpen, setIsDrawingModalOpen] = useState(false);
+  const [drawingRowNumber, setDrawingRowNumber] = useState(1);
+  const [drawingStage, setDrawingStage] = useState('HEAD');
+  const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false);
+  const [drawingError, setDrawingError] = useState(null);
+
   const socketRef = useRef(null);
 
   const showNotification = (msg) => {
     setNotification(msg);
     setTimeout(() => {
       setNotification((curr) => (curr === msg ? null : curr));
-    }, 3500);
+    }, 3800);
   };
 
   useEffect(() => {
@@ -128,7 +137,7 @@ export const BattlefieldPage = () => {
     };
 
     // Task 08: Magical Book Socket Events
-    const handleBookOpening = (data) => {
+    const handleBookOpening = () => {
       if (!isMounted) return;
       setIsFlipping(true);
       setBookError(null);
@@ -163,6 +172,20 @@ export const BattlefieldPage = () => {
       setBookError(err.message || 'Could not open book');
     };
 
+    // Task 09: Manual Drawing Socket Events
+    const handleDrawingUpdated = (data) => {
+      if (!isMounted) return;
+      if (data.room) setRoom(data.room);
+      soundEffects.playMagicShimmer();
+      showNotification(`Warrior completed ${data.stage} on Row ${data.rowNumber}!`);
+    };
+
+    const handleDrawingError = (err) => {
+      if (!isMounted) return;
+      setDrawingError(err.message || 'Failed to save drawing');
+      setIsSubmittingDrawing(false);
+    };
+
     socket.on('room:state', handleRoomState);
     socket.on('ROOM_STATE', handleRoomState);
     socket.on('room:player_left', handlePlayerLeft);
@@ -175,6 +198,14 @@ export const BattlefieldPage = () => {
     socket.on('BOOK_ERROR', handleBookError);
     socket.on('book:error', handleBookError);
 
+    // Drawing events
+    socket.on('DRAWING_UPDATED', handleDrawingUpdated);
+    socket.on('drawing:updated', handleDrawingUpdated);
+    socket.on('DRAWING_STAGE_COMPLETED', handleDrawingUpdated);
+    socket.on('drawing:stage_completed', handleDrawingUpdated);
+    socket.on('DRAWING_ERROR', handleDrawingError);
+    socket.on('drawing:error', handleDrawingError);
+
     return () => {
       isMounted = false;
       socket.off('room:state', handleRoomState);
@@ -186,6 +217,12 @@ export const BattlefieldPage = () => {
       socket.off('book:result', handleBookResult);
       socket.off('BOOK_ERROR', handleBookError);
       socket.off('book:error', handleBookError);
+      socket.off('DRAWING_UPDATED', handleDrawingUpdated);
+      socket.off('drawing:updated', handleDrawingUpdated);
+      socket.off('DRAWING_STAGE_COMPLETED', handleDrawingUpdated);
+      socket.off('drawing:stage_completed', handleDrawingUpdated);
+      socket.off('DRAWING_ERROR', handleDrawingError);
+      socket.off('drawing:error', handleDrawingError);
     };
   }, [roomCode, currentPlayer.playerId]);
 
@@ -200,6 +237,30 @@ export const BattlefieldPage = () => {
   const handleSelectRow = (rowNum) => {
     setSelectedRowNumber(rowNum);
   };
+
+  // Find home player entry
+  const homePlayer = useMemo(() => {
+    return room?.players?.find((p) => p.playerId === currentPlayer.playerId) || room?.players?.[0] || null;
+  }, [room, currentPlayer.playerId]);
+
+  // Find target row data
+  const homeRowStates = homePlayer?.territory?.rowStates || homePlayer?.rows || [];
+  const selectedRowData = homeRowStates.find((r) => r.rowNumber === selectedRowNumber) || {
+    rowNumber: selectedRowNumber,
+    status: 'EMPTY',
+    currentStage: 'HEAD',
+    drawings: {}
+  };
+
+  // Check if home player currently has an eligible row from an odd book landing
+  const eligibleRowNumber = useMemo(() => {
+    if (lastOutcome?.isOdd && lastOutcome?.targetRow) {
+      if (lastOutcome.playerId === currentPlayer.playerId) {
+        return lastOutcome.targetRow;
+      }
+    }
+    return null;
+  }, [lastOutcome, currentPlayer.playerId]);
 
   // Task 08: Handle OPEN THE BOOK Action
   const handleOpenBook = async () => {
@@ -244,6 +305,65 @@ export const BattlefieldPage = () => {
     }
   };
 
+  // Task 09: Open Drawing Modal for a Row
+  const handleOpenDrawingModal = (rowNum, stageOverride = null) => {
+    const targetRow = rowNum || selectedRowNumber || 1;
+    const targetRowData = homeRowStates.find((r) => r.rowNumber === targetRow);
+    const stage = stageOverride || targetRowData?.currentStage || 'HEAD';
+
+    setDrawingRowNumber(targetRow);
+    setDrawingStage(stage);
+    setDrawingError(null);
+    setIsDrawingModalOpen(true);
+  };
+
+  // Task 09: Handle Drawing Submission
+  const handleSubmitDrawing = async ({ rowNumber, stage, strokeData }) => {
+    setIsSubmittingDrawing(true);
+    setDrawingError(null);
+
+    try {
+      // 1. Emit via Socket.IO
+      socketRef.current?.emit(
+        'SUBMIT_DRAWING',
+        {
+          roomCode: room.code,
+          playerId: currentPlayer.playerId,
+          rowNumber,
+          stage,
+          strokeData
+        },
+        (ack) => {
+          if (ack && !ack.success) {
+            setDrawingError(ack.message);
+            setIsSubmittingDrawing(false);
+          }
+        }
+      );
+
+      // 2. REST fallback
+      const result = await roomApi.submitDrawing({
+        code: room.code,
+        playerId: currentPlayer.playerId,
+        rowNumber,
+        stage,
+        strokeData
+      });
+
+      if (result?.room) {
+        setRoom(result.room);
+      }
+
+      soundEffects.playMagicShimmer();
+      showNotification(`Successfully completed and saved ${stage} on Row ${rowNumber}!`);
+      setIsDrawingModalOpen(false);
+    } catch (err) {
+      setDrawingError(err.message || 'Failed to submit drawing');
+    } finally {
+      setIsSubmittingDrawing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <NotebookBackground className="py-16">
@@ -283,6 +403,10 @@ export const BattlefieldPage = () => {
   const isMatchStarted = room.status === 'STARTING' || room.status === 'PLAYING';
   const playerCount = room.players?.length || 0;
   const opponentCount = Math.max(1, playerCount - 1);
+
+  // Active drawings for drawing modal
+  const activeModalRowData = homeRowStates.find((r) => r.rowNumber === drawingRowNumber);
+  const activePreviousDrawings = activeModalRowData?.drawings || null;
 
   return (
     <NotebookBackground className="py-6 sm:py-8 min-h-screen">
@@ -363,13 +487,46 @@ export const BattlefieldPage = () => {
           )}
         </AnimatePresence>
 
+        {/* Action Prompt Banner: When an odd row is activated for current player */}
+        {eligibleRowNumber !== null && (
+          <motion.div
+            initial={{ scale: 0.98, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mb-5 p-4 rounded-xl border-2 border-[#2E8557] bg-[#F0F7F3] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#2E8557] text-white flex items-center justify-center font-display font-bold text-lg shadow-sm">
+                {eligibleRowNumber}
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-base text-[#1C5236] flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#D59926]" />
+                  <span>Row {eligibleRowNumber} Action Permitted!</span>
+                </h3>
+                <p className="font-mono text-xs text-[#2E8557]/90 mt-0.5">
+                  The Magical Book selected Row {eligibleRowNumber}. Advance your warrior by drawing your next character stage!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs sm:text-sm shadow-sketch transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+              <span>DRAW ON ROW {eligibleRowNumber}</span>
+            </button>
+          </motion.div>
+        )}
+
         {/* Status Notice if match has not formally started */}
         {!isMatchStarted && (
           <div className="mb-5 p-3.5 rounded-xl border border-[#D59926]/40 bg-[#FCF8EE] flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 text-xs font-mono text-[#96630D]">
               <Clock className="w-4 h-4 shrink-0 text-[#D59926]" />
               <span>
-                <strong>Inspection Mode:</strong> Host has not launched the match yet. The Magical Book and territories are ready for battle.
+                <strong>Inspection Mode:</strong> Host has not launched the match yet. The Magical Book, territories, and drawing engine are active in practice mode.
               </span>
             </div>
             <Link
@@ -410,12 +567,12 @@ export const BattlefieldPage = () => {
 
           <div className="hidden md:flex items-center gap-1.5 text-[11px] text-[#8C929D]">
             <Info className="w-3.5 h-3.5" />
-            <span>Rows: 1, 3, 5, 7, 9</span>
+            <span>Stages: HEAD → BODY → GUN → BULLET</span>
           </div>
         </div>
 
         {/* =========================================================================
-            MAIN BATTLEFIELD ARENA
+            TASK 07 & 09: MAIN BATTLEFIELD ARENA WITH ACTUAL FREEHAND DRAWINGS
             ========================================================================= */}
         <div className="mb-8">
           <NotebookBattlefieldArena
@@ -423,36 +580,57 @@ export const BattlefieldPage = () => {
             currentPlayerId={currentPlayer.playerId}
             selectedRowNumber={selectedRowNumber}
             onSelectRow={handleSelectRow}
+            onOpenDrawing={handleOpenDrawingModal}
+            eligibleRowNumber={eligibleRowNumber}
           />
         </div>
 
         {/* Bottom Section: History & Selected Row Inspector Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Selected Row Interaction Inspector Card */}
+          {/* Selected Row Interaction & Manual Drawing Trigger Card */}
           <div className="md:col-span-2">
             <Card className="p-4 sm:p-5 border-2 border-[#242730] bg-[#FAF6EE] shadow-sm h-full flex flex-col justify-between">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#242730] text-[#F8F4EB] font-display font-bold text-xl flex items-center justify-center shrink-0">
-                  {selectedRowNumber}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-display font-bold text-sm sm:text-base text-[#242730]">
-                      Selected Home Station: Row {selectedRowNumber}
-                    </h4>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#2E8557]/10 text-[#2E8557] border border-[#2E8557]/30">
-                      Active Inspection
-                    </span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#242730] text-[#F8F4EB] font-display font-bold text-xl flex items-center justify-center shrink-0">
+                    {selectedRowNumber}
                   </div>
-                  <p className="font-mono text-xs text-[#5C6069] mt-1">
-                    Clicking any of your five rows (1, 3, 5, 7, 9) focuses that station. When the Magical Book flips to an odd page ending in {selectedRowNumber}, you will draw or act on this row position!
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-display font-bold text-sm sm:text-base text-[#242730]">
+                        Selected Station: Row {selectedRowNumber}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#2E8557]/10 text-[#2E8557] border border-[#2E8557]/30">
+                        {selectedRowData.status || 'EMPTY'}
+                      </span>
+                    </div>
+                    <p className="font-mono text-xs text-[#5C6069] mt-1">
+                      Current Stage:{' '}
+                      <strong className="text-[#242730]">
+                        {selectedRowData.currentStage || 'HEAD'}
+                      </strong>{' '}
+                      • Bullets:{' '}
+                      <strong className="text-[#242730]">
+                        {selectedRowData.bulletCount || 0}/3 Loaded
+                      </strong>
+                    </p>
+                  </div>
                 </div>
+
+                {/* Direct Manual Draw Button for Selected Row */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenDrawingModal(selectedRowNumber, selectedRowData.currentStage)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#242730] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#242730] shadow-xs cursor-pointer transition-colors shrink-0"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>DRAW {selectedRowData.currentStage || 'HEAD'}</span>
+                </button>
               </div>
 
               <div className="flex items-center justify-between text-xs font-mono text-[#8C929D] pt-3 border-t border-[#D5CFC3] mt-3">
-                <span>Task 08 Magical Book Engine Active</span>
-                <span>Rule: Odd = Action | Even = Pass</span>
+                <span>Task 09 Manual Drawing Engine Active</span>
+                <span>Pencil, Eraser, Undo, Touch/Stylus Supported</span>
               </div>
             </Card>
           </div>
@@ -463,6 +641,21 @@ export const BattlefieldPage = () => {
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          TASK 09: CHARACTER DRAWING MODAL
+          ========================================================================= */}
+      <CharacterDrawingModal
+        isOpen={isDrawingModalOpen}
+        onClose={() => setIsDrawingModalOpen(false)}
+        rowNumber={drawingRowNumber}
+        stage={drawingStage}
+        previousDrawings={activePreviousDrawings}
+        playerShadeHex={homePlayer?.assignedShade?.hex || '#2B68B4'}
+        onSubmit={handleSubmitDrawing}
+        isSubmitting={isSubmittingDrawing}
+        error={drawingError}
+      />
     </NotebookBackground>
   );
 };

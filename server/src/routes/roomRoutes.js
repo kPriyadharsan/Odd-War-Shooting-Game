@@ -10,6 +10,7 @@ import {
   kickPlayer,
   startMatch,
   openRoomBook,
+  submitRowDrawing,
   updateRoomSettings,
   drawRoomBookPage
 } from '../controllers/roomController.js';
@@ -35,6 +36,9 @@ router.post('/:code/start', startMatch);
 
 // Magical Book & Turn Engine (Task 08)
 router.post('/:code/book/open', openRoomBook);
+
+// Manual Character Drawing Engine (Task 09)
+router.post('/:code/drawings', submitRowDrawing);
 
 // Host settings & Book Engine compatibility
 router.patch('/:code/settings', updateRoomSettings);

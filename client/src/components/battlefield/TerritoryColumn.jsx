@@ -29,6 +29,8 @@ export const TerritoryColumn = ({
   isHomeTerritory = false,
   selectedRowNumber = null,
   onSelectRow = () => {},
+  onOpenDrawing = () => {},
+  eligibleRowNumber = null,
   territoryIndex = 0,
   totalOpponents = 1,
   className = ''
@@ -38,8 +40,12 @@ export const TerritoryColumn = ({
   const nickname = player?.nickname || `Warrior ${territoryIndex + 1}`;
   const isHost = Boolean(player?.isHost);
 
-  // Map 5 rows data
-  const playerRows = player?.rows || TERRITORY_ROWS.map((r) => ({ rowNumber: r }));
+  // Map 5 rows data from territory.rowStates or rows fallback
+  const rowStates = player?.territory?.rowStates || player?.rows || [];
+  const playerRows = TERRITORY_ROWS.map((r) => {
+    const found = rowStates.find((row) => row.rowNumber === r);
+    return found || { rowNumber: r, status: 'EMPTY', currentStage: 'HEAD', drawings: {} };
+  });
 
   return (
     <div
@@ -121,6 +127,7 @@ export const TerritoryColumn = ({
         {TERRITORY_ROWS.map((rowNum) => {
           const rowData = playerRows.find((r) => r.rowNumber === rowNum) || { rowNumber: rowNum };
           const isSelected = isHomeTerritory && selectedRowNumber === rowNum;
+          const isEligible = isHomeTerritory && eligibleRowNumber === rowNum;
 
           return (
             <RowStation
@@ -130,6 +137,8 @@ export const TerritoryColumn = ({
               isHomeTerritory={isHomeTerritory}
               isSelected={isSelected}
               onSelectRow={onSelectRow}
+              onOpenDrawing={onOpenDrawing}
+              isEligibleForAction={isEligible}
               playerShadeHex={shadeHex}
             />
           );

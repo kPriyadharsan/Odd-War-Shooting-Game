@@ -20,6 +20,8 @@ export const NotebookBattlefieldArena = ({
   currentPlayerId = '',
   selectedRowNumber = null,
   onSelectRow = () => {},
+  onOpenDrawing = () => {},
+  eligibleRowNumber = null,
   className = ''
 }) => {
   // 1. Identify Home Player (Current Player) and Opponents
@@ -87,6 +89,8 @@ export const NotebookBattlefieldArena = ({
               isHomeTerritory={true}
               selectedRowNumber={selectedRowNumber}
               onSelectRow={onSelectRow}
+              onOpenDrawing={onOpenDrawing}
+              eligibleRowNumber={eligibleRowNumber}
               territoryIndex={0}
               totalOpponents={opponentCount}
             />

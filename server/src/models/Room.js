@@ -34,6 +34,31 @@ const playerShadeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const rowDrawingSchema = new mongoose.Schema(
+  {
+    rowNumber: { type: Number, required: true },
+    status: { type: String, default: 'EMPTY' },
+    currentStage: { type: String, default: 'HEAD' },
+    drawings: {
+      HEAD: { type: Object, default: null },
+      BODY: { type: Object, default: null },
+      GUN: { type: Object, default: null },
+      BULLET: { type: Object, default: null }
+    },
+    bulletCount: { type: Number, default: 0 },
+    bullets: {
+      type: [Object],
+      default: [
+        { slot: 1, drawn: false, drawing: null },
+        { slot: 2, drawn: false, drawing: null },
+        { slot: 3, drawn: false, drawing: null }
+      ]
+    },
+    isEliminated: { type: Boolean, default: false }
+  },
+  { _id: false }
+);
+
 const playerTerritorySchema = new mongoose.Schema(
   {
     territoryId: {
@@ -49,6 +74,23 @@ const playerTerritorySchema = new mongoose.Schema(
     rows: {
       type: [Number],
       default: TERRITORY_ROWS
+    },
+    rowStates: {
+      type: [rowDrawingSchema],
+      default: () =>
+        TERRITORY_ROWS.map((r) => ({
+          rowNumber: r,
+          status: 'EMPTY',
+          currentStage: 'HEAD',
+          drawings: {},
+          bulletCount: 0,
+          bullets: [
+            { slot: 1, drawn: false, drawing: null },
+            { slot: 2, drawn: false, drawing: null },
+            { slot: 3, drawn: false, drawing: null }
+          ],
+          isEliminated: false
+        }))
     }
   },
   { _id: false }

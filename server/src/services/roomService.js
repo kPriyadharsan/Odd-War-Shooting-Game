@@ -44,12 +44,30 @@ export const sanitizeRoom = (room) => {
 };
 
 /**
- * Generates an independent vertical territory model with rows 1, 3, 5, 7, 9.
+ * Generates an independent vertical territory model with rows 1, 3, 5, 7, 9 and drawing state.
  */
 export const createTerritory = (slotIndex) => ({
   territoryId: `territory_slot_${slotIndex}`,
   slotIndex,
-  rows: [...TERRITORY_ROWS]
+  rows: [...TERRITORY_ROWS],
+  rowStates: TERRITORY_ROWS.map((rowNum) => ({
+    rowNumber: rowNum,
+    status: 'EMPTY',
+    currentStage: 'HEAD',
+    drawings: {
+      HEAD: null,
+      BODY: null,
+      GUN: null,
+      BULLET: null
+    },
+    bulletCount: 0,
+    bullets: [
+      { slot: 1, drawn: false, drawing: null },
+      { slot: 2, drawn: false, drawing: null },
+      { slot: 3, drawn: false, drawing: null }
+    ],
+    isEliminated: false
+  }))
 });
 
 /**
@@ -852,6 +870,215 @@ export const roomService = {
       }
       throw err;
     }
+  },
+
+  /**
+   * Submits a manual character construction drawing for a player's row station (Task 09).
+   * Validates:
+   * - Room and player existence
+   * - Row ownership (players can only draw in their own territory)
+   * - Row identifier (1, 3, 5, 7, 9)
+   * - Stage progression sequence: HEAD -> BODY -> GUN -> BULLET
+   * - Stroke data limits (max 100 strokes, max 500 points per stroke, max payload size)
+   */
+  submitDrawing: async ({ code, playerId, rowNumber, stage, strokeData }) => {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const isDbConnected = getDatabaseStatus().connected;
+
+    let room = null;
+    if (isDbConnected) {
+      room = await Room.findOne({ code: cleanCode });
+    } else {
+      room = inMemoryRooms.get(cleanCode);
+    }
+
+    if (!room) {
+      const err = new Error(`Room with code "${cleanCode}" not found.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const player = room.players.find((p) => p.playerId === playerId);
+    if (!player) {
+      const err = new Error('Player is not in this room.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const targetRow = parseInt(rowNumber, 10);
+    if (!TERRITORY_ROWS.includes(targetRow)) {
+      const err = new Error(`Invalid row station ${rowNumber}. Must be 1, 3, 5, 7, or 9.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const validStages = ['HEAD', 'BODY', 'GUN', 'BULLET'];
+    const cleanStage = (stage || '').toUpperCase().trim();
+    if (!validStages.includes(cleanStage)) {
+      const err = new Error(`Invalid construction stage "${stage}". Must be HEAD, BODY, GUN, or BULLET.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Ensure player has territory and rowStates
+    if (!player.territory) {
+      player.territory = createTerritory(player.slotIndex);
+    }
+    if (!Array.isArray(player.territory.rowStates) || player.territory.rowStates.length === 0) {
+      player.territory = createTerritory(player.slotIndex);
+    }
+
+    let rowState = player.territory.rowStates.find((r) => r.rowNumber === targetRow);
+    if (!rowState) {
+      rowState = {
+        rowNumber: targetRow,
+        status: 'EMPTY',
+        currentStage: 'HEAD',
+        drawings: {},
+        bulletCount: 0,
+        bullets: [
+          { slot: 1, drawn: false, drawing: null },
+          { slot: 2, drawn: false, drawing: null },
+          { slot: 3, drawn: false, drawing: null }
+        ],
+        isEliminated: false
+      };
+      player.territory.rowStates.push(rowState);
+    }
+
+    // 1. Stage Progression State Machine Validation
+    if (rowState.isEliminated) {
+      const err = new Error(`Cannot draw on Row ${targetRow}: station has been eliminated.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const expectedStage = rowState.currentStage || 'HEAD';
+    if (cleanStage !== expectedStage && !(cleanStage === 'BULLET' && expectedStage === 'ARMED')) {
+      const err = new Error(
+        `Cannot draw ${cleanStage} yet! Row ${targetRow} is currently at stage: ${expectedStage}. Complete stages in sequence: HEAD → BODY → GUN → BULLET.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 2. Stroke Data Payload Validation
+    if (!strokeData || typeof strokeData !== 'object') {
+      const err = new Error('Invalid stroke data payload.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const strokes = Array.isArray(strokeData.strokes) ? strokeData.strokes : (Array.isArray(strokeData) ? strokeData : []);
+    if (strokes.length === 0) {
+      const err = new Error('Drawing cannot be empty. Please draw at least one pencil stroke.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (strokes.length > 150) {
+      const err = new Error(`Too many strokes (${strokes.length}). Maximum allowed is 150 strokes per stage.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Validate points per stroke
+    for (let i = 0; i < strokes.length; i++) {
+      const stroke = strokes[i];
+      if (!Array.isArray(stroke.points) || stroke.points.length === 0) {
+        continue;
+      }
+      if (stroke.points.length > 600) {
+        const err = new Error(`Stroke #${i + 1} contains too many points (${stroke.points.length}). Maximum is 600.`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    // Check payload size
+    const payloadSize = JSON.stringify(strokeData).length;
+    if (payloadSize > 250000) {
+      const err = new Error(`Drawing payload too large (${Math.round(payloadSize / 1024)} KB). Maximum allowed is 250 KB.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Authoritative Storage & Stage Advancement
+    if (!rowState.drawings) {
+      rowState.drawings = {};
+    }
+
+    const now = new Date();
+    const storedDrawing = {
+      stage: cleanStage,
+      strokes,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    let nextStage = cleanStage;
+
+    if (cleanStage === 'HEAD') {
+      rowState.drawings.HEAD = storedDrawing;
+      rowState.status = 'HEAD_DRAWN';
+      rowState.currentStage = 'BODY';
+      nextStage = 'BODY';
+    } else if (cleanStage === 'BODY') {
+      rowState.drawings.BODY = storedDrawing;
+      rowState.status = 'BODY_DRAWN';
+      rowState.currentStage = 'GUN';
+      nextStage = 'GUN';
+    } else if (cleanStage === 'GUN') {
+      rowState.drawings.GUN = storedDrawing;
+      rowState.status = 'GUN_DRAWN';
+      rowState.currentStage = 'BULLET';
+      nextStage = 'BULLET';
+    } else if (cleanStage === 'BULLET') {
+      rowState.drawings.BULLET = storedDrawing;
+      const count = (rowState.bulletCount || 0) + 1;
+      rowState.bulletCount = Math.min(3, count);
+      rowState.status = 'BULLETS_LOADED';
+
+      if (!Array.isArray(rowState.bullets)) {
+        rowState.bullets = [
+          { slot: 1, drawn: false, drawing: null },
+          { slot: 2, drawn: false, drawing: null },
+          { slot: 3, drawn: false, drawing: null }
+        ];
+      }
+
+      if (rowState.bullets[count - 1]) {
+        rowState.bullets[count - 1].drawn = true;
+        rowState.bullets[count - 1].drawing = storedDrawing;
+      }
+
+      if (rowState.bulletCount < 3) {
+        rowState.currentStage = 'BULLET';
+        nextStage = 'BULLET';
+      } else {
+        rowState.currentStage = 'ARMED';
+        nextStage = 'ARMED';
+      }
+    }
+
+    if (isDbConnected) {
+      room.markModified('players');
+      await room.save();
+    }
+
+    logger.info(
+      `[RoomService] Drawing submitted: ${player.nickname} completed ${cleanStage} on Row ${targetRow} in room ${cleanCode}. Next stage: ${nextStage}`
+    );
+
+    return {
+      room: sanitizeRoom(room),
+      player,
+      rowNumber: targetRow,
+      stage: cleanStage,
+      nextStage,
+      drawing: storedDrawing,
+      rowState
+    };
   },
 
   /**

@@ -241,6 +241,33 @@ export const openRoomBook = async (req, res, next) => {
 };
 
 /**
+ * Submit manual character drawing for a row (Task 09)
+ */
+export const submitRowDrawing = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const { playerId, rowNumber, stage, strokeData } = req.body;
+
+    if (!code || !playerId || rowNumber === undefined || !stage || !strokeData) {
+      return sendError(res, 'code, playerId, rowNumber, stage, and strokeData are required', 400);
+    }
+
+    const result = await roomService.submitDrawing({
+      code,
+      playerId,
+      rowNumber,
+      stage,
+      strokeData
+    });
+
+    return sendSuccess(res, result, 'Drawing submitted successfully');
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return sendError(res, err.message, statusCode);
+  }
+};
+
+/**
  * Legacy server-authoritative random book page draw endpoint
  * Validates that drawing uses the room's configured bookPageCount
  */

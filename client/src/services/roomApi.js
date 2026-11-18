@@ -117,5 +117,16 @@ export const roomApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to open magical book');
     return data.data;
+  },
+
+  submitDrawing: async ({ code, playerId, rowNumber, stage, strokeData }) => {
+    const res = await fetch(`${API_BASE}/${code}/drawings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, rowNumber, stage, strokeData })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to submit drawing');
+    return data.data;
   }
 };

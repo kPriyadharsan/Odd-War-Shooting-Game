@@ -10,15 +10,15 @@ import {
   Pencil
 } from 'lucide-react';
 import { ROW_STATUS, ROW_STATUS_META } from '../../store/battlefieldState.js';
+import { RenderedCharacterStrokes } from '../drawing/RenderedCharacterStrokes.jsx';
 
 /**
- * RowStation Component (Task 07)
+ * RowStation Component (Task 09)
  * Renders an independent playable row station (1, 3, 5, 7, or 9).
- * - Permanently visible row number identifier.
- * - Character drawing area placeholder.
- * - Character state placeholder (EMPTY, HEAD_DRAWN, BODY_DRAWN, GUN_DRAWN, BULLETS_LOADED, ELIMINATED).
- * - Visual selection indicator for home territory.
- * - Locked / non-selectable feedback for opponents.
+ * - Displays the actual player's manual pencil drawing vectors.
+ * - Displays construction stage status (HEAD, BODY, GUN, BULLETS, ELIMINATED).
+ * - Displays ammunition bullet counters.
+ * - Restricts drawing and selection strictly to home territory.
  */
 export const RowStation = ({
   rowNumber,
@@ -26,10 +26,17 @@ export const RowStation = ({
   isHomeTerritory,
   isSelected,
   onSelectRow,
+  onOpenDrawing,
+  isEligibleForAction = false,
   playerShadeHex = '#2B68B4',
   className = ''
 }) => {
   const status = rowData?.status || ROW_STATUS.EMPTY;
+  const currentStage = rowData?.currentStage || 'HEAD';
+  const drawings = rowData?.drawings || null;
+  const hasDrawings = drawings && (drawings.HEAD || drawings.BODY || drawings.GUN || drawings.BULLET);
+  const bulletCount = rowData?.bulletCount || 0;
+
   const statusMeta = ROW_STATUS_META[status] || ROW_STATUS_META[ROW_STATUS.EMPTY];
   const isEliminated = rowData?.isEliminated || status === ROW_STATUS.ELIMINATED;
 
@@ -50,6 +57,8 @@ export const RowStation = ({
         isHomeTerritory
           ? isSelected
             ? 'bg-[#FFFDF9] border-[#242730] shadow-sketch ring-2 ring-[#242730]/15 cursor-pointer z-10'
+            : isEligibleForAction
+            ? 'bg-[#F0F7F3] border-[#2E8557] ring-1 ring-[#2E8557]/40 cursor-pointer animate-pulse'
             : 'bg-[#FCFAF5]/90 border-[#D5CFC3] hover:border-[#242730]/60 hover:bg-[#FFFDF9] cursor-pointer'
           : 'bg-[#FAF6EE]/60 border-[#D5CFC3]/60 cursor-default opacity-90'
       } ${isEliminated ? 'opacity-40 grayscale' : ''} ${className}`}
@@ -88,21 +97,21 @@ export const RowStation = ({
         </div>
       </div>
 
-      {/* Center: Character Drawing Area Placeholder */}
+      {/* Center: Character Drawing Canvas Viewport */}
       <div className="flex-1 mx-2 sm:mx-3 h-full flex flex-col justify-center items-center">
         <div className="relative w-full max-w-[140px] sm:max-w-[180px] h-14 sm:h-16 rounded border border-dashed border-[#D5CFC3] bg-white/40 group-hover:bg-white/70 transition-colors flex items-center justify-center overflow-hidden px-2">
           {/* Subtle notebook horizontal lines inside drawing box */}
           <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_11px,rgba(130,155,185,0.4)_12px)]" />
 
-          {/* Character State Visual Representation */}
-          {status === ROW_STATUS.EMPTY ? (
-            <div className="flex flex-col items-center justify-center text-center">
-              <span className="font-handwriting text-[11px] sm:text-xs text-[#8C929D] tracking-wide">
-                [ Character Canvas ]
-              </span>
-              <span className="text-[9px] font-mono text-[#8C929D]/70 hidden sm:inline">
-                Empty Position
-              </span>
+          {/* Render Actual Freehand Pencil Drawing If Present */}
+          {hasDrawings ? (
+            <div className="relative w-full h-full p-1 flex items-center justify-center">
+              <RenderedCharacterStrokes
+                drawings={drawings}
+                width="100%"
+                height="100%"
+                viewBox="0 0 400 300"
+              />
             </div>
           ) : isEliminated ? (
             <div className="flex items-center gap-1.5 text-[#CE4242]">
@@ -110,20 +119,19 @@ export const RowStation = ({
               <span className="font-handwriting font-bold text-xs">ELIMINATED</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full border border-black/20"
-                style={{ backgroundColor: playerShadeHex }}
-              />
-              <span className="font-mono text-xs font-semibold text-[#242730]">
-                {statusMeta.shortLabel}
+            <div className="flex flex-col items-center justify-center text-center">
+              <span className="font-handwriting text-[11px] sm:text-xs text-[#8C929D] tracking-wide">
+                [ Empty Station ]
+              </span>
+              <span className="text-[9px] font-mono text-[#8C929D]/70 hidden sm:inline">
+                Needs {currentStage}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Right: State Placeholder Badge & Interaction feedback */}
+      {/* Right: Stage Badge, Ammunition & Interaction feedback */}
       <div className="flex flex-col items-end gap-1 shrink-0">
         <span
           className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border ${statusMeta.badgeClass}`}
@@ -131,15 +139,42 @@ export const RowStation = ({
           {statusMeta.shortLabel}
         </span>
 
-        {/* Home vs Opponent Feedback */}
+        {/* Ammunition Slots (3 Bullets max) */}
+        {bulletCount > 0 && (
+          <div className="flex items-center gap-0.5" title={`${bulletCount}/3 Bullets loaded`}>
+            {[1, 2, 3].map((slot) => (
+              <span
+                key={slot}
+                className={`w-1.5 h-1.5 rounded-full ${
+                  slot <= bulletCount ? 'bg-[#2E8557]' : 'bg-[#D5CFC3]'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Home vs Opponent Feedback / Draw Trigger */}
         {isHomeTerritory ? (
-          isSelected ? (
+          isEligibleForAction ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (typeof onOpenDrawing === 'function') {
+                  onOpenDrawing(rowNumber, currentStage);
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono text-[9px] font-bold shadow-xs cursor-pointer"
+            >
+              <Pencil className="w-2.5 h-2.5" /> DRAW {currentStage}
+            </button>
+          ) : isSelected ? (
             <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold text-[#2E8557]">
               <Pencil className="w-2.5 h-2.5" /> SELECTED
             </span>
           ) : (
             <span className="text-[9px] font-mono text-[#8C929D] group-hover:text-[#242730] transition-colors hidden sm:inline">
-              Click to select
+              Click to inspect
             </span>
           )
         ) : (
