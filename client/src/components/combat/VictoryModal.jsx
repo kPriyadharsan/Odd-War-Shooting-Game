@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Crown, ArrowRight, RotateCcw, Home, Sparkles } from 'lucide-react';
 import { Button } from '../ui/index.js';
+import { soundEffects } from '../../services/soundEffects.js';
 
 /**
  * VictoryModal Component (Task 10)
@@ -76,7 +77,10 @@ export const VictoryModal = ({
             <div className="w-full flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
-                onClick={onPlayAgain}
+                onClick={() => {
+                  soundEffects.playButtonClick();
+                  onPlayAgain();
+                }}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#242730] hover:bg-black text-[#F8F4EB] font-mono font-bold text-xs shadow-sketch transition-all cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -85,7 +89,10 @@ export const VictoryModal = ({
 
               <button
                 type="button"
-                onClick={onReturnToLobby}
+                onClick={() => {
+                  soundEffects.playButtonClick();
+                  onReturnToLobby();
+                }}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-[#242730] bg-[#FFFDF9] hover:bg-[#F4EFE6] text-[#242730] font-mono font-bold text-xs shadow-xs transition-all cursor-pointer"
               >
                 <Home className="w-4 h-4" />

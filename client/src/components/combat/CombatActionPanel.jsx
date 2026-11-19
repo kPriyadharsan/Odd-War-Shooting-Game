@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Crosshair, Target, Zap, AlertTriangle, ShieldAlert, CheckCircle2, X } from 'lucide-react';
+import { soundEffects } from '../../services/soundEffects.js';
 
 /**
  * CombatActionPanel Component (Task 10)
@@ -93,7 +94,10 @@ export const CombatActionPanel = ({
               </div>
               <button
                 type="button"
-                onClick={onClearTarget}
+                onClick={() => {
+                  soundEffects.playButtonClick();
+                  onClearTarget();
+                }}
                 title="Cancel Target"
                 className="p-1 hover:bg-[#CE4242]/10 rounded-full text-[#CE4242] transition-colors"
               >

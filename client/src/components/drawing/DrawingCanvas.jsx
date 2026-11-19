@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Pencil,
   Eraser,
@@ -10,6 +11,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { RenderedCharacterStrokes, pointsToSvgPath } from './RenderedCharacterStrokes.jsx';
+import { soundEffects } from '../../services/soundEffects.js';
 
 /**
  * DrawingCanvas Component (Task 09)
@@ -40,6 +42,8 @@ export const DrawingCanvas = ({
   const [pencilColor, setPencilColor] = useState('#23252A'); // Graphite default
   const [strokeWidth, setStrokeWidth] = useState(4); // 2, 4, 6
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+  const [hasFlourish, setHasFlourish] = useState(false);
 
   // Active in-progress stroke
   const currentPointsRef = useRef([]);
@@ -72,6 +76,7 @@ export const DrawingCanvas = ({
     currentPointsRef.current = [coords];
     setActivePoints([coords]);
     setIsDrawing(true);
+    soundEffects.playPencilDrawing();
   };
 
   // Pointer Move
@@ -91,6 +96,7 @@ export const DrawingCanvas = ({
 
     currentPointsRef.current.push(coords);
     setActivePoints([...currentPointsRef.current]);
+    soundEffects.playPencilDrawing();
   };
 
   // Pointer Up / Cancel
@@ -124,13 +130,45 @@ export const DrawingCanvas = ({
   // Undo Last Stroke
   const handleUndo = () => {
     if (strokes.length === 0) return;
+    soundEffects.playButtonClick();
     setStrokes((prev) => prev.slice(0, -1));
   };
 
   // Clear Canvas
   const handleClear = () => {
+    soundEffects.playButtonClick();
     setStrokes([]);
     setShowClearConfirm(false);
+  };
+
+  const handleToolSelect = (tool) => {
+    soundEffects.playButtonClick();
+    setActiveTool(tool);
+  };
+
+  const handleWidthSelect = (size) => {
+    soundEffects.playButtonClick();
+    setStrokeWidth(size);
+  };
+
+  const handleColorSelect = (color) => {
+    soundEffects.playButtonClick();
+    setPencilColor(color);
+  };
+
+  const handleSubmit = () => {
+    if (strokes.length === 0) {
+      // Trigger invalid eraser / pencil shake feedback
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      return;
+    }
+    soundEffects.playStageComplete();
+    setHasFlourish(true);
+    setTimeout(() => {
+      onSave({ strokes });
+      setHasFlourish(false);
+    }, 350);
   };
 
   const activePathData = pointsToSvgPath(activePoints);
@@ -143,7 +181,7 @@ export const DrawingCanvas = ({
         <div className="flex items-center gap-1 bg-[#EFE8DA]/80 p-1 rounded-lg border border-[#D5CFC3]">
           <button
             type="button"
-            onClick={() => setActiveTool('pencil')}
+            onClick={() => handleToolSelect('pencil')}
             className={`flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded transition-colors ${
               activeTool === 'pencil'
                 ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
@@ -157,7 +195,7 @@ export const DrawingCanvas = ({
 
           <button
             type="button"
-            onClick={() => setActiveTool('eraser')}
+            onClick={() => handleToolSelect('eraser')}
             className={`flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded transition-colors ${
               activeTool === 'eraser'
                 ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
@@ -181,7 +219,7 @@ export const DrawingCanvas = ({
               <button
                 key={size}
                 type="button"
-                onClick={() => setStrokeWidth(size)}
+                onClick={() => handleWidthSelect(size)}
                 className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-colors ${
                   strokeWidth === size
                     ? 'bg-[#242730] text-[#F8F4EB] font-bold shadow-xs'
@@ -207,7 +245,7 @@ export const DrawingCanvas = ({
           <div className="flex items-center gap-1 bg-[#EFE8DA]/80 p-1 rounded-lg border border-[#D5CFC3]">
             <button
               type="button"
-              onClick={() => setPencilColor('#23252A')}
+              onClick={() => handleColorSelect('#23252A')}
               className={`w-6 h-6 rounded-full border-2 transition-transform flex items-center justify-center ${
                 pencilColor === '#23252A'
                   ? 'border-[#242730] scale-110 shadow-xs'
@@ -221,7 +259,7 @@ export const DrawingCanvas = ({
 
             <button
               type="button"
-              onClick={() => setPencilColor(playerShadeHex)}
+              onClick={() => handleColorSelect(playerShadeHex)}
               className={`w-6 h-6 rounded-full border-2 transition-transform flex items-center justify-center ${
                 pencilColor === playerShadeHex
                   ? 'border-[#242730] scale-110 shadow-xs'
@@ -259,14 +297,18 @@ export const DrawingCanvas = ({
         </div>
       </div>
 
-      {/* Drawing Surface Viewport (Aspect ratio 400 x 300) */}
-      <div
+      {/* Drawing Surface Viewport (Aspect ratio 400 x 300) with Shake Animation on invalid action */}
+      <motion.div
         ref={containerRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className="relative w-full aspect-[4/3] rounded-b-xl border-2 border-[#23252A] bg-[#FCFAF5] overflow-hidden cursor-crosshair shadow-inner"
+        animate={isShaking ? { x: [-8, 8, -6, 6, -3, 3, 0] } : {}}
+        transition={{ duration: 0.4 }}
+        className={`relative w-full aspect-[4/3] rounded-b-xl border-2 ${
+          isShaking ? 'border-[#CE4242] ring-2 ring-[#CE4242]/30' : 'border-[#23252A]'
+        } bg-[#FCFAF5] overflow-hidden cursor-crosshair shadow-inner transition-colors`}
         style={{ touchAction: 'none' }}
       >
         {/* Notebook Paper Horizontal Rulings */}
@@ -331,9 +373,9 @@ export const DrawingCanvas = ({
         {/* Empty Canvas Guide Label */}
         {strokes.length === 0 && !isDrawing && (
           <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-center p-4">
-            <Pencil className="w-8 h-8 text-[#D59926]/40 mb-1" />
-            <span className="font-handwriting text-base text-[#8C929D]">
-              Draw your {stage} here
+            <Pencil className={`w-8 h-8 ${isShaking ? 'text-[#CE4242]' : 'text-[#D59926]/40'} mb-1 transition-colors`} />
+            <span className={`font-handwriting text-base ${isShaking ? 'text-[#CE4242] font-bold' : 'text-[#8C929D]'}`}>
+              {isShaking ? 'Please sketch your warrior before submitting!' : `Draw your ${stage} here`}
             </span>
             <span className="font-mono text-[10px] text-[#8C929D]/60 mt-0.5">
               Touch, mouse, or stylus supported
@@ -347,7 +389,31 @@ export const DrawingCanvas = ({
             {strokes.length} stroke{strokes.length === 1 ? '' : 's'}
           </span>
         </div>
-      </div>
+
+        {/* Celebratory Graphite Flourish on submit */}
+        <AnimatePresence>
+          {hasFlourish && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center bg-[#2E8557]/15 backdrop-blur-[1px]"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [0, 1.2, 1] }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#242730] text-[#F8F4EB] shadow-sketch border border-[#D5CFC3]"
+              >
+                <Sparkles className="w-5 h-5 text-[#D59926]" />
+                <span className="font-display font-bold text-sm tracking-wide">
+                  {stage} SKETCHED!
+                </span>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Clear Confirmation Prompt */}
       {showClearConfirm && (
@@ -380,8 +446,7 @@ export const DrawingCanvas = ({
 
         <button
           type="button"
-          onClick={() => onSave({ strokes })}
-          disabled={strokes.length === 0}
+          onClick={handleSubmit}
           className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs shadow-sketch disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
         >
           <Check className="w-4 h-4" />

@@ -27,9 +27,11 @@ import {
   LoadingIndicator,
   Modal
 } from '../../components/ui/index.js';
+import { SoundControls } from '../../components/ui/SoundControls.jsx';
 import { TerritoryMiniaturePreview } from '../../components/waiting/TerritoryMiniaturePreview.jsx';
 import { roomApi } from '../../services/roomApi.js';
 import { getSocket } from '../../services/socket.js';
+import { soundEffects } from '../../services/soundEffects.js';
 import { getPlayerSession } from '../../store/playerSession.js';
 
 export const WaitingRoomPage = () => {
@@ -190,6 +192,7 @@ export const WaitingRoomPage = () => {
 
   const handleCopyCode = () => {
     if (room?.code) {
+      soundEffects.playButtonClick();
       navigator.clipboard.writeText(room.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -203,6 +206,7 @@ export const WaitingRoomPage = () => {
   // Toggle Readiness (for non-hosts)
   const handleToggleReady = async () => {
     if (isCurrentPlayerHost || isReadyActionLoading) return;
+    soundEffects.playButtonClick();
     setIsReadyActionLoading(true);
 
     const nextReadyState = !isCurrentPlayerReady;
@@ -235,6 +239,7 @@ export const WaitingRoomPage = () => {
   // Host updates Book Page Count (100 or 200)
   const handleUpdatePageCount = async (newPageCount) => {
     if (!isCurrentPlayerHost || isUpdatingSettings || room?.status === 'STARTING') return;
+    soundEffects.playButtonClick();
     setIsUpdatingSettings(true);
 
     try {
@@ -295,6 +300,7 @@ export const WaitingRoomPage = () => {
   // Host starts the match
   const handleStartMatch = async () => {
     if (!isCurrentPlayerHost || isStartingMatch) return;
+    soundEffects.playBookEntrance();
     setIsStartingMatch(true);
 
     try {
@@ -421,8 +427,9 @@ export const WaitingRoomPage = () => {
             </div>
           </div>
 
-          {/* Quick Room Code Display */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Quick Room Code Display & Sound Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 self-start sm:self-auto">
+            <SoundControls />
             <div className="bg-[#FAF6EE] border-2 border-[#242730] rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xs">
               <span className="text-[11px] font-mono text-[#8C929D]">CODE:</span>
               <span className="font-mono font-bold text-lg tracking-widest text-[#242730]">

@@ -14,6 +14,7 @@ import { ProfileReviewModal } from '../components/profile/ProfileReviewModal.jsx
 import { validateNickname } from '../utils/validation.js';
 import { loadProfileDraft, saveProfileDraft } from '../store/gameStore.js';
 import { COLOR_FAMILIES } from '../config/colors.js';
+import { soundEffects } from '../services/soundEffects.js';
 
 export const ProfileSetupPage = () => {
   const shouldReduceMotion = useReducedMotion();
@@ -36,6 +37,7 @@ export const ProfileSetupPage = () => {
 
   const handleContinue = (e) => {
     e.preventDefault();
+    soundEffects.playButtonClick();
     setTouched(true);
 
     if (!validation.isValid) {
@@ -54,6 +56,7 @@ export const ProfileSetupPage = () => {
   };
 
   const handleConfirmReview = () => {
+    soundEffects.playMagicShimmer();
     setIsReviewOpen(false);
     setSaveSuccessMessage(`Warrior "${validation.trimmed}" is ready for battle in ${colorFamily} squad!`);
   };

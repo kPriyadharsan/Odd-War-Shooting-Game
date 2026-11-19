@@ -280,21 +280,51 @@ export const MagicalBook = ({
                         {finalPageNumber || displayNumber}
                       </div>
 
-                      {/* Final Digit Breakdown */}
+                      {/* Final Digit Breakdown & Parchment Stamp Reveal */}
                       {finalPageNumber !== null && (
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <span className="font-mono text-xs text-[#4A4F5B]">
-                            Final Digit:
-                          </span>
-                          <span
-                            className={`w-6 h-6 rounded-full flex items-center justify-center font-display font-bold text-xs text-white ${
+                        <div className="mt-2 flex flex-col items-center gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs text-[#4A4F5B]">
+                              Final Digit:
+                            </span>
+                            <span
+                              className={`w-6 h-6 rounded-full flex items-center justify-center font-display font-bold text-xs text-white ${
+                                (finalPageNumber % 10) % 2 !== 0
+                                  ? 'bg-[#2E8557]'
+                                  : 'bg-[#5C6069]'
+                              }`}
+                            >
+                              {finalPageNumber % 10}
+                            </span>
+                          </div>
+
+                          {/* Official Notebook Parchment Stamp */}
+                          <motion.div
+                            initial={{ scale: 2.2, opacity: 0, rotate: -20 }}
+                            animate={{
+                              scale: 1,
+                              opacity: 1,
+                              rotate: (finalPageNumber % 10) % 2 !== 0 ? -4 : 3
+                            }}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 420,
+                              damping: 22,
+                              delay: 0.12
+                            }}
+                            className={`px-2.5 py-1 rounded-md border-2 font-mono text-[10px] font-bold tracking-wider uppercase shadow-xs flex items-center gap-1.5 ${
                               (finalPageNumber % 10) % 2 !== 0
-                                ? 'bg-[#2E8557]'
-                                : 'bg-[#5C6069]'
+                                ? 'border-[#2E8557] bg-[#2E8557]/10 text-[#2E8557]'
+                                : 'border-[#5C6069] bg-[#5C6069]/10 text-[#5C6069]'
                             }`}
                           >
-                            {finalPageNumber % 10}
-                          </span>
+                            <Sparkles className="w-3 h-3" />
+                            <span>
+                              {(finalPageNumber % 10) % 2 !== 0
+                                ? `ROW ${finalPageNumber % 10} ACTIVATED`
+                                : 'EVEN DIGIT • PASS TURN'}
+                            </span>
+                          </motion.div>
                         </div>
                       )}
                     </motion.div>
@@ -327,13 +357,14 @@ export const MagicalBook = ({
         </motion.div>
       </div>
 
-      {/* Floating Sparkle Particles (CSS-lightweight) */}
+      {/* Floating Sparkle & Graphite Dust Particles */}
       <AnimatePresence>
         {(isFlipping || finalPageNumber) && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Golden sparks */}
             {[...Array(6)].map((_, i) => (
               <motion.div
-                key={i}
+                key={`spark_${i}`}
                 initial={{
                   opacity: 0,
                   scale: 0.5,
@@ -356,6 +387,30 @@ export const MagicalBook = ({
               >
                 <Sparkles className="w-4 h-4" />
               </motion.div>
+            ))}
+
+            {/* Graphite dust motes */}
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={`dust_${i}`}
+                initial={{
+                  opacity: 0,
+                  x: 150 + (i * 35) - 70,
+                  y: 120
+                }}
+                animate={{
+                  opacity: [0, 0.6, 0],
+                  y: [120, 20 + i * 18],
+                  x: [150 + (i * 35) - 70, 150 + (i * 35) - 50 + (i % 2 === 0 ? 15 : -15)]
+                }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  delay: i * 0.35,
+                  ease: 'easeOut'
+                }}
+                className="absolute w-1.5 h-1.5 rounded-full bg-[#242730]/40 pointer-events-none"
+              />
             ))}
           </div>
         )}

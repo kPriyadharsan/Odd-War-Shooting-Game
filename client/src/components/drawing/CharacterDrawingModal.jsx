@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DrawingCanvas } from './DrawingCanvas.jsx';
 import { Modal, Button } from '../ui/index.js';
+import { soundEffects } from '../../services/soundEffects.js';
 
 const STAGE_CONFIG = {
   HEAD: {
@@ -57,18 +58,25 @@ export const CharacterDrawingModal = ({
   const stages = ['HEAD', 'BODY', 'GUN', 'BULLET'];
 
   const handleCanvasSave = ({ strokes }) => {
+    soundEffects.playButtonClick();
     setPendingStrokes(strokes);
     setShowConfirmSubmit(true);
   };
 
   const handleConfirmSubmit = () => {
     if (!pendingStrokes) return;
+    soundEffects.playStageComplete();
     onSubmit({
       rowNumber,
       stage,
       strokeData: { strokes: pendingStrokes }
     });
     setShowConfirmSubmit(false);
+  };
+
+  const handleClose = () => {
+    soundEffects.playButtonClick();
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -102,7 +110,7 @@ export const CharacterDrawingModal = ({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg border border-[#D5CFC3] text-[#4A4F5B] hover:text-[#23252A] hover:bg-[#EFE8DA] transition-colors"
           >
             <X className="w-5 h-5" />

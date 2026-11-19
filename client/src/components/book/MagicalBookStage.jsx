@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { MagicalBook } from './MagicalBook.jsx';
 import { Button } from '../ui/index.js';
+import { soundEffects } from '../../services/soundEffects.js';
 
 /**
  * MagicalBookStage Component (Task 08)
@@ -140,7 +141,10 @@ export const MagicalBookStage = ({
         <Button
           variant="primary"
           size="lg"
-          onClick={onOpenBook}
+          onClick={() => {
+            soundEffects.playButtonClick();
+            onOpenBook();
+          }}
           disabled={!isCurrentPlayerTurn || isFlipping || isActionLoading}
           className={`px-8 py-3 text-sm sm:text-base font-bold font-display shadow-sketch ${
             isCurrentPlayerTurn && !isFlipping

@@ -20,7 +20,8 @@ import {
   Button,
   IconButton,
   Card,
-  LoadingIndicator
+  LoadingIndicator,
+  GameFeedbackToast
 } from '../../components/ui/index.js';
 import { SoundControls } from '../../components/ui/SoundControls.jsx';
 import { NotebookBattlefieldArena } from '../../components/battlefield/NotebookBattlefieldArena.jsx';
@@ -48,7 +49,7 @@ export const BattlefieldPage = () => {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [selectedRowNumber, setSelectedRowNumber] = useState(1);
-  const [notification, setNotification] = useState(null);
+  const [feedbackToast, setFeedbackToast] = useState(null);
 
   // Magical Book State (Task 08)
   const [isFlipping, setIsFlipping] = useState(false);
@@ -72,11 +73,23 @@ export const BattlefieldPage = () => {
 
   const socketRef = useRef(null);
 
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => {
-      setNotification((curr) => (curr === msg ? null : curr));
-    }, 3800);
+  const triggerToast = (toastOrMsg, fallbackType = 'INFO') => {
+    if (typeof toastOrMsg === 'string') {
+      setFeedbackToast({
+        id: `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        type: fallbackType,
+        message: toastOrMsg
+      });
+    } else if (toastOrMsg && typeof toastOrMsg === 'object') {
+      setFeedbackToast({
+        id: `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        ...toastOrMsg
+      });
+    }
+  };
+
+  const showNotification = (msg, type = 'INFO') => {
+    triggerToast(msg, type);
   };
 
   useEffect(() => {
@@ -148,7 +161,11 @@ export const BattlefieldPage = () => {
     const handlePlayerLeft = ({ playerId, room: updatedRoom }) => {
       if (!isMounted) return;
       if (updatedRoom) setRoom(updatedRoom);
-      showNotification('A player disconnected from the battlefield.');
+      triggerToast({
+        type: 'INFO',
+        title: 'WARRIOR DISCONNECTED',
+        message: 'A player disconnected from the notebook battlefield.'
+      });
     };
 
     // Task 08: Magical Book Socket Events
@@ -156,6 +173,11 @@ export const BattlefieldPage = () => {
       if (!isMounted) return;
       setIsFlipping(true);
       setBookError(null);
+      triggerToast({
+        type: 'BOOK_OPENED',
+        title: 'BOOK OPENED',
+        message: 'Flipping through the magical ruled pages of fate...'
+      });
     };
 
     const handleBookResult = ({ outcome, room: updatedRoom }) => {
@@ -170,13 +192,17 @@ export const BattlefieldPage = () => {
         if (outcome.playerId === currentPlayer.playerId) {
           setSelectedRowNumber(outcome.targetRow);
         }
-        showNotification(
-          `${outcome.nickname} drew Page ${outcome.pageNumber} → Row ${outcome.targetRow} Activated!`
-        );
+        triggerToast({
+          type: 'ROW_UNLOCKED',
+          title: `ROW ${outcome.targetRow} UNLOCKED`,
+          message: `${outcome.nickname} drew Page ${outcome.pageNumber} (Ends in ${outcome.finalDigit})!`
+        });
       } else {
-        showNotification(
-          `${outcome?.nickname} drew Page ${outcome?.pageNumber} → Even Digit (NO ACTION)`
-        );
+        triggerToast({
+          type: 'NO_ACTION',
+          title: 'NO ACTION',
+          message: `${outcome?.nickname} drew Page ${outcome?.pageNumber} (Even Digit). Turn passes to next warrior.`
+        });
       }
     };
 
@@ -191,8 +217,12 @@ export const BattlefieldPage = () => {
     const handleDrawingUpdated = (data) => {
       if (!isMounted) return;
       if (data.room) setRoom(data.room);
-      soundEffects.playMagicShimmer();
-      showNotification(`Warrior completed ${data.stage} on Row ${data.rowNumber}!`);
+      soundEffects.playStageComplete();
+      triggerToast({
+        type: 'DRAWING_COMPLETED',
+        title: 'STAGE COMPLETED',
+        message: `Warrior successfully sketched ${data.stage} on Row ${data.rowNumber}!`
+      });
     };
 
     const handleDrawingError = (err) => {
@@ -213,18 +243,22 @@ export const BattlefieldPage = () => {
 
       const shot = data.shotEvent;
       if (shot) {
-        showNotification(
-          `⚔️ ${shot.attackerNickname} fired at ${shot.targetNickname}'s Row ${shot.targetRow}!`
-        );
+        triggerToast({
+          type: 'SHOT_FIRED',
+          title: 'SHOT FIRED',
+          message: `⚔️ ${shot.attackerNickname} fired at ${shot.targetNickname}'s Row ${shot.targetRow}!`
+        });
       }
     };
 
     const handleRowEliminated = (data) => {
       if (!isMounted) return;
       soundEffects.playPencilStrike();
-      showNotification(
-        `💥 Row ${data.targetRow} eliminated!`
-      );
+      triggerToast({
+        type: 'ROW_ELIMINATED',
+        title: 'ROW ELIMINATED',
+        message: `💥 Row ${data.targetRow} has been crossed out with pencil strike!`
+      });
     };
 
     const handleMatchFinished = (data) => {
@@ -232,7 +266,12 @@ export const BattlefieldPage = () => {
       if (data.room) setRoom(data.room);
       soundEffects.playVictoryFanfare();
       setIsVictoryModalOpen(true);
-      showNotification(`🏆 MATCH WON by ${data.winnerNickname || 'Warrior'}!`);
+      const isWinner = data.winnerId === currentPlayer.playerId;
+      triggerToast({
+        type: isWinner ? 'VICTORY' : 'DEFEAT',
+        title: isWinner ? 'YOU WON!' : 'MATCH FINISHED',
+        message: `🏆 Victory claimed by ${data.winnerNickname || 'Warrior'}!`
+      });
     };
 
     const handleCombatError = (err) => {
@@ -248,11 +287,19 @@ export const BattlefieldPage = () => {
       const isMyTurnNow = data.activePlayerId === currentPlayer.playerId;
       if (isMyTurnNow) {
         soundEffects.playMagicShimmer();
-        showNotification(`⚡ YOUR TURN! (Turn #${data.turnNumber}) Open the Magical Book!`);
+        triggerToast({
+          type: 'YOUR_TURN',
+          title: 'YOUR TURN',
+          message: `Turn #${data.turnNumber}: Open the Magical Book of Fate to activate a station!`
+        });
       } else {
         const activeName =
           data.room?.players?.find((p) => p.playerId === data.activePlayerId)?.nickname || 'Another warrior';
-        showNotification(`Turn #${data.turnNumber}: Waiting for ${activeName}'s turn.`);
+        triggerToast({
+          type: 'OPPONENT_TURN',
+          title: "OPPONENT'S TURN",
+          message: `Turn #${data.turnNumber}: Waiting for ${activeName} to open the book.`
+        });
       }
     };
 
@@ -269,8 +316,12 @@ export const BattlefieldPage = () => {
     const handlePlayerEliminated = (data) => {
       if (!isMounted) return;
       if (data.room) setRoom(data.room);
-      soundEffects.playPencilStrike();
-      showNotification(`☠️ Warrior ${data.targetNickname || 'Player'} has been completely ELIMINATED!`);
+      soundEffects.playPlayerEliminated();
+      triggerToast({
+        type: 'PLAYER_ELIMINATED',
+        title: 'WARRIOR ELIMINATED',
+        message: `☠️ Warrior ${data.targetNickname || 'Player'} has lost all 5 stations and is out!`
+      });
     };
 
     const handleAmmunitionUpdated = (data) => {
@@ -737,27 +788,13 @@ export const BattlefieldPage = () => {
           </div>
         </div>
 
-        {/* Temporary Notification Banner */}
+        {/* Notebook Visual Game Feedback Toast (Task 12) */}
         <AnimatePresence>
-          {notification && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="mb-5 p-3 rounded-lg border border-[#2B68B4]/40 bg-[#F0F5FB] text-[#2B68B4] font-mono text-xs flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 shrink-0" />
-                <span>{notification}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setNotification(null)}
-                className="text-xs hover:underline"
-              >
-                Dismiss
-              </button>
-            </motion.div>
+          {feedbackToast && (
+            <GameFeedbackToast
+              toast={feedbackToast}
+              onDismiss={() => setFeedbackToast(null)}
+            />
           )}
         </AnimatePresence>
 

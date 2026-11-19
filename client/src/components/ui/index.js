@@ -8,3 +8,4 @@ export { Modal } from './Modal.jsx';
 export { PlayerColorIndicator, PLAYER_COLORS } from './PlayerColorIndicator.jsx';
 export { PencilStrokeDemo } from './PencilStrokeDemo.jsx';
 export { NotebookBackground } from './NotebookBackground.jsx';
+export { GameFeedbackToast } from './GameFeedbackToast.jsx';

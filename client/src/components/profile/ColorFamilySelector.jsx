@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Check, Info } from 'lucide-react';
 import { COLOR_LIST } from '../../config/colors.js';
+import { soundEffects } from '../../services/soundEffects.js';
 
 export const ColorFamilySelector = ({
   selectedColor = 'BLUE',
@@ -30,7 +31,10 @@ export const ColorFamilySelector = ({
               type="button"
               whileHover={{ y: -2 }}
               whileTap={{ y: 0 }}
-              onClick={() => onSelectColor(family.id)}
+              onClick={() => {
+                soundEffects.playButtonClick();
+                onSelectColor(family.id);
+              }}
               className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all select-none min-h-[95px] cursor-pointer ${
                 isSelected
                   ? 'border-2 border-[#23252A] bg-[#FFFDF9] shadow-sketch'

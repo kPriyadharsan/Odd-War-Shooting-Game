@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ROW_STATUS, ROW_STATUS_META } from '../../store/battlefieldState.js';
 import { RenderedCharacterStrokes } from '../drawing/RenderedCharacterStrokes.jsx';
+import { soundEffects } from '../../services/soundEffects.js';
 
 /**
  * RowStation Component (Tasks 09 & 10)
@@ -55,8 +56,10 @@ export const RowStation = ({
 
   const handleClick = () => {
     if (isHomeTerritory && typeof onSelectRow === 'function') {
+      soundEffects.playButtonClick();
       onSelectRow(rowNumber);
     } else if (!isHomeTerritory && isTargetable && !isEliminated && typeof onSelectTarget === 'function') {
+      soundEffects.playGunLoading();
       onSelectTarget(playerId, rowNumber);
     }
   };
@@ -192,38 +195,49 @@ export const RowStation = ({
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               <svg className="w-full h-full" viewBox="0 0 160 60" preserveAspectRatio="none">
                 {/* Diagonal pencil scratch 1 */}
-                <path
+                <motion.path
                   d="M 5,8 Q 80,32 155,54"
                   stroke="#CE4242"
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   strokeDasharray="4 1"
                   fill="none"
-                  opacity="0.85"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.85 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
                 />
                 {/* Diagonal pencil scratch 2 */}
-                <path
+                <motion.path
                   d="M 155,8 Q 80,28 5,54"
                   stroke="#CE4242"
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   strokeDasharray="4 1"
                   fill="none"
-                  opacity="0.85"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.85 }}
+                  transition={{ duration: 0.35, ease: 'easeOut', delay: 0.1 }}
                 />
                 {/* Middle scribble scratch */}
-                <path
+                <motion.path
                   d="M 20,30 Q 50,22 80,31 T 140,28"
                   stroke="#242730"
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
-                  opacity="0.6"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.6 }}
+                  transition={{ duration: 0.3, ease: 'easeOut', delay: 0.18 }}
                 />
               </svg>
-              <div className="absolute px-2 py-0.5 bg-[#CE4242] text-white font-mono text-[9px] font-black tracking-widest rounded shadow-xs rotate-[-8deg] border border-white/60">
+              <motion.div
+                initial={{ scale: 2.2, rotate: -25, opacity: 0 }}
+                animate={{ scale: 1, rotate: -8, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.2 }}
+                className="absolute px-2 py-0.5 bg-[#CE4242] text-white font-mono text-[9px] font-black tracking-widest rounded shadow-xs border border-white/60"
+              >
                 ELIMINATED
-              </div>
+              </motion.div>
             </div>
           )}
 

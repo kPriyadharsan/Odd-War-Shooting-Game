@@ -11,16 +11,20 @@ import {
 import { HeroNotebookIllustration } from '../components/landing/HeroNotebookIllustration.jsx';
 import { HowItWorksStepCard } from '../components/landing/HowItWorksStepCard.jsx';
 import { MultiplayerFeatureGrid } from '../components/landing/MultiplayerFeatureGrid.jsx';
+import { SoundControls } from '../components/ui/SoundControls.jsx';
+import { soundEffects } from '../services/soundEffects.js';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
 
   const handleStartPlaying = () => {
+    soundEffects.playButtonClick();
     navigate('/profile-setup');
   };
 
   const scrollToHowItWorks = () => {
+    soundEffects.playButtonClick();
     const el = document.getElementById('how-it-works');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
@@ -39,6 +43,11 @@ export const LandingPage = () => {
     <NotebookBackground showMargin={true} className="py-6 sm:py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pl-12 sm:pl-20">
         
+        {/* Floating Top Right Sound Controls */}
+        <div className="flex justify-end mb-2">
+          <SoundControls />
+        </div>
+
         {/* ========================================================= */}
         {/* 1. HERO SECTION                                           */}
         {/* ========================================================= */}
