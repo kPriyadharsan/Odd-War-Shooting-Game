@@ -22,28 +22,28 @@ export const Navbar = () => {
 
   return (
     <header className="border-b border-[#D5CFC3] bg-[#F8F4EB]/95 backdrop-blur-sm sticky top-0 z-40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-3 sm:px-8 h-14 sm:h-16 flex items-center justify-between">
         {/* Brand Logo & Title */}
-        <Link to="/" className="flex items-center space-x-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-[#23252A] text-[#F8F4EB] flex items-center justify-center shadow-sketch-sm group-hover:bg-[#2B68B4] transition-colors">
-            <Pencil className="w-4 h-4" />
+        <Link to="/" className="flex items-center space-x-2 sm:space-x-2.5 group">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#23252A] text-[#F8F4EB] flex items-center justify-center shadow-sketch-sm group-hover:bg-[#2B68B4] transition-colors shrink-0">
+            <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div className="flex items-center">
-            <span className="font-handwriting font-bold text-2xl tracking-wide text-[#23252A]">
+            <span className="font-handwriting font-bold text-xl sm:text-2xl tracking-wide text-[#23252A]">
               ODD WARS
             </span>
-            <span className="hidden sm:inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[#EFE8DA] border border-[#D5CFC3] text-[#5C6069]">
+            <span className="hidden md:inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[#EFE8DA] border border-[#D5CFC3] text-[#5C6069]">
               Notebook
             </span>
           </div>
         </Link>
 
         {/* Navigation items */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-1 sm:space-x-4">
           <nav className="flex items-center space-x-1 sm:space-x-1.5 text-xs font-sans font-medium">
             <Link
               to="/"
-              className={`px-2.5 py-1.5 rounded-lg border transition-all ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all ${
                 isHome
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
                   : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
@@ -54,7 +54,7 @@ export const Navbar = () => {
 
             <Link
               to="/rooms"
-              className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
                 isRooms
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
                   : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
@@ -66,14 +66,14 @@ export const Navbar = () => {
 
             <Link
               to="/profile-setup"
-              className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
                 isProfile
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
                   : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>Profile</span>
+              <span className="hidden xs:inline">Profile</span>
             </Link>
 
             <Link

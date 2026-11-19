@@ -41,16 +41,16 @@ export const DesignSystemPreview = () => {
   };
 
   return (
-    <NotebookBackground showMargin={true} className="py-8 sm:py-12">
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 pl-14 sm:pl-20">
+    <NotebookBackground showMargin={true} className="py-4 sm:py-12">
+      <div className="max-w-6xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
         {/* Top Header */}
-        <header className="mb-12 border-b border-[#D5CFC3] pb-6">
+        <header className="mb-8 sm:mb-12 border-b border-[#D5CFC3] pb-4 sm:pb-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#EFE8DA] border border-[#D5CFC3] text-xs font-mono text-[#5C6069] mb-3">
             <Sparkles className="w-3.5 h-3.5 text-[#2B68B4]" />
             <span>Task 02: Design System & Animation Foundation</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
+          <h1 className="text-3xl xs:text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
             ODD WARS — Notebook Design System
           </h1>
 

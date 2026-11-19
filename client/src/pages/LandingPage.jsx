@@ -40,8 +40,8 @@ export const LandingPage = () => {
       };
 
   return (
-    <NotebookBackground showMargin={true} className="py-6 sm:py-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 pl-12 sm:pl-20">
+    <NotebookBackground showMargin={true} className="py-4 sm:py-10">
+      <div className="max-w-6xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
         
         {/* Floating Top Right Sound Controls */}
         <div className="flex justify-end mb-2">
@@ -51,8 +51,8 @@ export const LandingPage = () => {
         {/* ========================================================= */}
         {/* 1. HERO SECTION                                           */}
         {/* ========================================================= */}
-        <section className="min-h-[85vh] flex flex-col justify-center mb-16 sm:mb-24 pt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <section className="min-h-[85vh] flex flex-col justify-center mb-16 sm:mb-24 pt-2 sm:pt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             {/* Left Column: Hero Copy & Actions */}
             <motion.div
               className="lg:col-span-6 flex flex-col items-start"
@@ -65,7 +65,7 @@ export const LandingPage = () => {
               </div>
 
               {/* Title */}
-              <h1 className="text-5xl sm:text-7xl font-handwriting font-bold tracking-tight text-[#23252A] leading-none mb-3">
+              <h1 className="text-4xl xs:text-5xl sm:text-7xl font-handwriting font-bold tracking-tight text-[#23252A] leading-none mb-3">
                 ODD WARS
               </h1>
 

@@ -73,7 +73,7 @@ export const RowStation = ({
         isHomeTerritory ? '(Your Territory)' : '(Opponent Territory)'
       } ${isEliminated ? '- Eliminated' : ''}`}
       aria-pressed={isHomeTerritory ? isSelected : isTargeted}
-      className={`group relative w-full h-[98px] sm:h-[108px] rounded-lg transition-all duration-200 select-none flex items-center justify-between px-2.5 sm:px-3 border ${
+      className={`group relative w-full h-[94px] sm:h-[106px] rounded-lg transition-all duration-200 select-none flex items-center justify-between px-2 sm:px-3 border ${
         isEliminated
           ? 'bg-[#F2EDE4]/60 border-[#D5CFC3] opacity-65 cursor-not-allowed'
           : isTargeted
@@ -108,9 +108,9 @@ export const RowStation = ({
       )}
 
       {/* Row Number Identifier (Permanent & Distinct) */}
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         <div
-          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg sm:text-xl border transition-transform ${
+          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-display font-bold text-base sm:text-xl border transition-transform ${
             isEliminated
               ? 'border-[#8C929D] bg-[#8C929D]/15 text-[#8C929D] line-through'
               : isTargeted
@@ -132,8 +132,8 @@ export const RowStation = ({
           {rowNumber}
         </div>
 
-        <div className="hidden sm:flex flex-col">
-          <span className="font-mono text-[10px] text-[#8C929D] uppercase tracking-wider">
+        <div className="hidden md:flex flex-col">
+          <span className="font-mono text-[9px] text-[#8C929D] uppercase tracking-wider">
             Row
           </span>
           <span
@@ -147,9 +147,9 @@ export const RowStation = ({
       </div>
 
       {/* Center: Character Drawing Canvas Viewport */}
-      <div className="flex-1 mx-2 sm:mx-3 h-full flex flex-col justify-center items-center">
+      <div className="flex-1 mx-1.5 sm:mx-3 h-full flex flex-col justify-center items-center min-w-0">
         <div
-          className={`relative w-full max-w-[140px] sm:max-w-[180px] h-14 sm:h-16 rounded border transition-colors flex items-center justify-center overflow-hidden px-2 ${
+          className={`relative w-full max-w-[120px] sm:max-w-[180px] h-13 sm:h-16 rounded border transition-colors flex items-center justify-center overflow-hidden px-1 sm:px-2 ${
             isEliminated
               ? 'border-[#CE4242]/40 bg-[#FAF4F4]'
               : isTargeted

@@ -439,15 +439,15 @@ export const DrawingCanvas = ({
       )}
 
       {/* Bottom Action: Review & Submit */}
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="font-handwriting text-xs text-[#5C6069]">
+      <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <span className="font-handwriting text-xs text-[#5C6069] text-center sm:text-left">
           Stage: <strong className="text-[#242730]">{stage}</strong> • Complete stage to advance
         </span>
 
         <button
           type="button"
           onClick={handleSubmit}
-          className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs shadow-sketch disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+          className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs shadow-sketch disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer w-full sm:w-auto"
         >
           <Check className="w-4 h-4" />
           <span>SUBMIT {stage}</span>

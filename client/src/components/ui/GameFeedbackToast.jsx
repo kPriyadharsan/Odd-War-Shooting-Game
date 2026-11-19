@@ -147,7 +147,7 @@ export const GameFeedbackToast = ({ toast, onDismiss }) => {
   const IconComponent = style.icon;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm w-[calc(100vw-32px)] sm:w-80 pointer-events-auto select-none">
+    <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 max-w-sm w-[calc(100vw-24px)] sm:w-80 pointer-events-auto select-none">
       <motion.div
         initial={{ opacity: 0, y: -24, scale: 0.92, rotate: -2 }}
         animate={{ opacity: 1, y: 0, scale: 1, rotate: 0.5 }}

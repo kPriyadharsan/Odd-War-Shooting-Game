@@ -82,12 +82,12 @@ export const CharacterDrawingModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 12 }}
-        className="relative w-full max-w-xl my-auto rounded-2xl border-2 border-[#23252A] bg-[#FCFAF5] shadow-2xl p-4 sm:p-6 overflow-hidden select-none"
+        className="relative w-full max-w-xl my-auto rounded-2xl border-2 border-[#23252A] bg-[#FCFAF5] shadow-2xl p-3.5 sm:p-6 overflow-y-auto max-h-[94vh] select-none"
       >
         {/* Notebook Top Paper Ruling Accent */}
         <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_23px,rgba(130,155,185,0.3)_24px)]" />

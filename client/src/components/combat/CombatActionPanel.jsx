@@ -78,19 +78,21 @@ export const CombatActionPanel = ({
         </div>
 
         {/* Target Status & Fire Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           {hasTarget ? (
-            <div className="flex items-center gap-2 p-2 rounded-xl border border-[#CE4242]/40 bg-[#FFF3F3]">
-              <div className="w-8 h-8 rounded-lg bg-[#CE4242] text-white flex items-center justify-center font-display font-bold text-sm shrink-0">
-                {selectedTarget.rowNumber}
-              </div>
-              <div className="min-w-0 pr-1">
-                <span className="text-[10px] font-mono text-[#CE4242] uppercase tracking-wider block leading-tight">
-                  TARGET ACQUIRED
-                </span>
-                <span className="font-display font-bold text-xs text-[#242730] truncate block">
-                  {targetOpponent.nickname} (Row {selectedTarget.rowNumber})
-                </span>
+            <div className="flex items-center gap-2 p-2 rounded-xl border border-[#CE4242]/40 bg-[#FFF3F3] w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-[#CE4242] text-white flex items-center justify-center font-display font-bold text-sm shrink-0">
+                  {selectedTarget.rowNumber}
+                </div>
+                <div className="min-w-0 pr-1">
+                  <span className="text-[10px] font-mono text-[#CE4242] uppercase tracking-wider block leading-tight">
+                    TARGET ACQUIRED
+                  </span>
+                  <span className="font-display font-bold text-xs text-[#242730] truncate block">
+                    {targetOpponent.nickname} (Row {selectedTarget.rowNumber})
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
@@ -99,15 +101,15 @@ export const CombatActionPanel = ({
                   onClearTarget();
                 }}
                 title="Cancel Target"
-                className="p-1 hover:bg-[#CE4242]/10 rounded-full text-[#CE4242] transition-colors"
+                className="p-1 hover:bg-[#CE4242]/10 rounded-full text-[#CE4242] transition-colors shrink-0"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <div className="p-2.5 rounded-xl border border-dashed border-[#D5CFC3] bg-[#FAF6EE] text-xs font-mono text-[#8C929D] flex items-center gap-2">
+            <div className="p-2.5 rounded-xl border border-dashed border-[#D5CFC3] bg-[#FAF6EE] text-xs font-mono text-[#8C929D] flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
               <Crosshair className="w-4 h-4 text-[#8C929D]" />
-              <span>Click any opponent row station to target</span>
+              <span>Click any opponent row to target</span>
             </div>
           )}
 
@@ -116,7 +118,7 @@ export const CombatActionPanel = ({
             type="button"
             disabled={!isArmed || !hasTarget || !isMyTurn || isFiring}
             onClick={onFireShot}
-            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-mono font-bold text-sm shadow-sketch transition-all cursor-pointer select-none active:scale-95 shrink-0 border-2 ${
+            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-mono font-bold text-sm shadow-sketch transition-all cursor-pointer select-none active:scale-95 shrink-0 border-2 w-full sm:w-auto ${
               isArmed && hasTarget && isMyTurn && !isFiring
                 ? 'bg-[#CE4242] hover:bg-[#B03535] text-white border-[#242730] animate-bounce-subtle'
                 : 'bg-[#FAF6EE] text-[#8C929D] border-[#D5CFC3] cursor-not-allowed opacity-60'
@@ -137,7 +139,7 @@ export const CombatActionPanel = ({
             <button
               type="button"
               onClick={onPassTurn}
-              className="inline-flex items-center justify-center px-3.5 py-3 rounded-xl font-mono text-xs font-semibold border border-[#D5CFC3] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-[#5C6069] shadow-xs cursor-pointer transition-colors"
+              className="inline-flex items-center justify-center px-3.5 py-3 rounded-xl font-mono text-xs font-semibold border border-[#D5CFC3] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-[#5C6069] shadow-xs cursor-pointer transition-colors w-full sm:w-auto"
             >
               Pass Turn
             </button>

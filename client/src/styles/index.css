@@ -29,7 +29,7 @@ body {
 @media (max-width: 640px) {
   .notebook-paper {
     background-image: 
-      linear-gradient(to right, transparent 35px, rgba(215, 80, 80, 0.18) 36px, transparent 37px),
+      linear-gradient(to right, transparent 27px, rgba(215, 80, 80, 0.18) 28px, transparent 29px),
       repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(130, 155, 185, 0.12) 28px);
   }
 }

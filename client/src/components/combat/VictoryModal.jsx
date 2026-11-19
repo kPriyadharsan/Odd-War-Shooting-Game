@@ -21,12 +21,12 @@ export const VictoryModal = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative w-full max-w-md rounded-2xl border-4 border-[#242730] bg-[#FFFDF9] p-6 sm:p-8 shadow-paper-lg text-center overflow-hidden"
+          className="relative w-full max-w-md rounded-2xl border-4 border-[#242730] bg-[#FFFDF9] p-4 sm:p-8 shadow-paper-lg text-center overflow-y-auto max-h-[92vh] my-auto"
         >
           {/* Notebook ruled background texture */}
           <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_19px,rgba(130,155,185,0.4)_20px)]" />

@@ -56,17 +56,17 @@ export const HeroNotebookIllustration = ({ className = '' }) => {
       </div>
 
       {/* Ruled notebook sheet surface */}
-      <div className="relative p-4 sm:p-6 card-ruled min-h-[380px] sm:min-h-[420px] flex flex-col justify-between">
+      <div className="relative p-3 sm:p-6 card-ruled min-h-[340px] sm:min-h-[420px] flex flex-col justify-between">
         {/* Red notebook margin line on left */}
-        <div className="absolute top-0 bottom-0 left-8 sm:left-10 w-0.5 bg-[#F0A8A8]/60 pointer-events-none" />
+        <div className="absolute top-0 bottom-0 left-6 sm:left-10 w-0.5 bg-[#F0A8A8]/60 pointer-events-none" />
 
         {/* Notebook top handwritten note */}
-        <div className="flex items-center justify-between pl-8 sm:pl-10 text-xs font-handwriting text-[#5C6069] mb-2">
-          <span className="flex items-center gap-1.5 font-bold text-[#23252A]">
-            <Target className="w-3.5 h-3.5 text-[#CE4242]" />
-            "Battle #12 — Rule: Fire only on Odd Turns!"
+        <div className="flex items-center justify-between pl-6 sm:pl-10 text-xs font-handwriting text-[#5C6069] mb-2">
+          <span className="flex items-center gap-1.5 font-bold text-[#23252A] truncate pr-1">
+            <Target className="w-3.5 h-3.5 text-[#CE4242] shrink-0" />
+            <span className="truncate">"Battle #12 — Odd Turns Rule!"</span>
           </span>
-          <span className="font-mono text-[10px] bg-[#EFE8DA] px-2 py-0.5 rounded border border-[#D5CFC3]">
+          <span className="font-mono text-[9px] sm:text-[10px] bg-[#EFE8DA] px-2 py-0.5 rounded border border-[#D5CFC3] shrink-0">
             2–4 PLAYERS
           </span>
         </div>

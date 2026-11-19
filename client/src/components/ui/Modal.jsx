@@ -39,7 +39,7 @@ export const Modal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
           {/* Backdrop with paper-toned dimming */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -56,13 +56,13 @@ export const Modal = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className={`relative w-full ${maxWidth} bg-[#FFFDF9] border-2 border-[#23252A] shadow-paper-lg rounded-2xl overflow-hidden z-10 ${className}`}
+            className={`relative w-full ${maxWidth} bg-[#FFFDF9] border-2 border-[#23252A] shadow-paper-lg rounded-2xl overflow-hidden z-10 max-h-[92vh] flex flex-col ${className}`}
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[#D5CFC3] flex items-center justify-between bg-[#FCFAF3]">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#D5CFC3] flex items-center justify-between bg-[#FCFAF3] shrink-0">
               <div>
                 {title && (
-                  <h3 className="text-xl font-handwriting font-bold tracking-wide text-[#23252A]">
+                  <h3 className="text-lg sm:text-xl font-handwriting font-bold tracking-wide text-[#23252A]">
                     {title}
                   </h3>
                 )}
@@ -82,13 +82,13 @@ export const Modal = ({
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5 max-h-[75vh] overflow-y-auto text-sm text-[#23252A] font-sans">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto text-sm text-[#23252A] font-sans flex-1">
               {children}
             </div>
 
             {/* Footer */}
             {footer && (
-              <div className="px-6 py-3.5 border-t border-[#D5CFC3] bg-[#FCFAF3] flex items-center justify-end gap-3">
+              <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-[#D5CFC3] bg-[#FCFAF3] flex items-center justify-end gap-2.5 sm:gap-3 shrink-0">
                 {footer}
               </div>
             )}

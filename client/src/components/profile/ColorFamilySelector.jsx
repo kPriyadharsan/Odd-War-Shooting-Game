@@ -22,7 +22,7 @@ export const ColorFamilySelector = ({
       </div>
 
       {/* 5 Color family cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2.5 sm:gap-3">
         {COLOR_LIST.map((family) => {
           const isSelected = selectedColor.toUpperCase() === family.id;
           return (

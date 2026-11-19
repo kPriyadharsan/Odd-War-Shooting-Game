@@ -13,10 +13,10 @@ export const Card = ({
 }) => {
   const paddingClasses = {
     none: 'p-0',
-    sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8'
-  }[padding] || 'p-6';
+    sm: 'p-3 sm:p-4',
+    md: 'p-4 sm:p-6',
+    lg: 'p-4 sm:p-6 md:p-8'
+  }[padding] || 'p-4 sm:p-6';
 
   let variantClasses = '';
   if (variant === 'ruled') {

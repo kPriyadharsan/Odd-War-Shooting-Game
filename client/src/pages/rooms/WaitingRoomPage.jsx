@@ -401,38 +401,38 @@ export const WaitingRoomPage = () => {
   }
 
   return (
-    <NotebookBackground className="py-8 min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <NotebookBackground className="py-4 sm:py-8 min-h-screen">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6">
         {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#4A4F5B]/20">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-[#4A4F5B]/20">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={() => setLeaveConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Leave Room</span>
+              <span>Leave</span>
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-[#8C929D]">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#8C929D] truncate">
                   MULTI-WARRIOR WAITING ROOM
                 </span>
-                <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-ping shrink-0" />
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#242730]">
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#242730] truncate">
                 ODD WARS — Waiting for Warriors
               </h1>
             </div>
           </div>
 
           {/* Quick Room Code Display & Sound Controls */}
-          <div className="flex items-center gap-2 sm:gap-3 self-start sm:self-auto">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
             <SoundControls />
-            <div className="bg-[#FAF6EE] border-2 border-[#242730] rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xs">
-              <span className="text-[11px] font-mono text-[#8C929D]">CODE:</span>
-              <span className="font-mono font-bold text-lg tracking-widest text-[#242730]">
+            <div className="bg-[#FAF6EE] border-2 border-[#242730] rounded-lg px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0">
+              <span className="text-[10px] sm:text-[11px] font-mono text-[#8C929D]">CODE:</span>
+              <span className="font-mono font-bold text-base sm:text-lg tracking-widest text-[#242730]">
                 {room.code}
               </span>
               <button

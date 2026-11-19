@@ -1,19 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Shield, Target, MoveHorizontal } from 'lucide-react';
 import { TerritoryColumn } from './TerritoryColumn.jsx';
 import { calculateBattlefieldProportions } from '../../store/battlefieldState.js';
 
 /**
- * NotebookBattlefieldArena Component (Task 07)
+ * NotebookBattlefieldArena Component (Tasks 07 & 12)
  * Implements the core 45% / 55% proportional notebook battlefield layout.
  *
- * Rules:
- * - Own territory ALWAYS appears on the LEFT side, taking exactly 45% width.
- * - Remaining 55% is reserved for all opponents, divided equally:
- *   - 2-player match: 1 opponent = 55%
- *   - 3-player match: 2 opponents = 27.5% each
- *   - 4-player match: 3 opponents = 18.333% each
- * - Dynamic support for 2, 3, or 4 players.
- * - 5 horizontal rows (1, 3, 5, 7, 9) aligned across all player columns.
+ * Responsive Architecture:
+ * - Own territory ALWAYS appears on the LEFT side (45% width).
+ * - Remaining 55% is reserved for all opponents, divided equally.
+ * - Mobile & Tablet Responsive: Provides smooth horizontal scrolling with touch gestures
+ *   and responsive quick-switcher tabs ("⚔️ Home" / "🎯 Opponents").
+ * - Fluid high-resolution scaling across tablets, laptops, and ultra-wide desktops.
  */
 export const NotebookBattlefieldArena = ({
   players = [],
@@ -27,16 +26,16 @@ export const NotebookBattlefieldArena = ({
   onSelectTarget = () => {},
   className = ''
 }) => {
+  const scrollContainerRef = useRef(null);
+  const [activeMobileView, setActiveMobileView] = useState('home'); // 'home' | 'opponents'
+
   // 1. Identify Home Player (Current Player) and Opponents
   const { homePlayer, opponents } = useMemo(() => {
     if (!players || players.length === 0) {
       return { homePlayer: null, opponents: [] };
     }
 
-    // Find current player entry; fallback to first player if matching id is absent
     const foundHome = players.find((p) => p.playerId === currentPlayerId) || players[0];
-
-    // Filter opponents and sort consistently by slotIndex (or joining order)
     const filteredOpponents = players
       .filter((p) => p.playerId !== foundHome.playerId)
       .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0));
@@ -54,6 +53,26 @@ export const NotebookBattlefieldArena = ({
     [opponentCount]
   );
 
+  const scrollToView = (view) => {
+    setActiveMobileView(view);
+    if (!scrollContainerRef.current) return;
+    if (view === 'home') {
+      scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      scrollContainerRef.current.scrollTo({
+        left: scrollContainerRef.current.scrollWidth * 0.45,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const minArenaWidthClass =
+    opponentCount >= 3
+      ? 'min-w-[820px] lg:min-w-0'
+      : opponentCount === 2
+      ? 'min-w-[680px] md:min-w-0'
+      : 'min-w-[560px] md:min-w-0';
+
   if (!homePlayer) {
     return (
       <div className="w-full p-8 text-center bg-[#FAF6EE] rounded-2xl border border-dashed border-[#D5CFC3]">
@@ -66,7 +85,7 @@ export const NotebookBattlefieldArena = ({
 
   return (
     <div
-      className={`relative w-full rounded-2xl border-2 border-[#23252A] bg-[#F8F4EB] p-3 sm:p-5 shadow-paper-lg overflow-hidden ${className}`}
+      className={`relative w-full rounded-2xl border-2 border-[#23252A] bg-[#F8F4EB] p-2.5 sm:p-4 md:p-5 shadow-paper-lg overflow-hidden ${className}`}
     >
       {/* Notebook Background Ruling (Light horizontal lines spanning entire arena) */}
       <div className="absolute inset-0 pointer-events-none opacity-40 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_27px,rgba(130,155,185,0.2)_28px)]" />
@@ -74,12 +93,59 @@ export const NotebookBattlefieldArena = ({
       {/* Top Red Notebook Margin Line (School Notebook signature) */}
       <div className="absolute left-6 sm:left-10 top-0 bottom-0 w-0.5 bg-[#D75050]/20 pointer-events-none z-0" />
 
+      {/* Mobile Responsive Navigation Bar (<md only) */}
+      <div className="relative z-20 flex md:hidden items-center justify-between gap-2 mb-2.5 pb-2 border-b border-[#D5CFC3]">
+        <div className="flex items-center gap-1.5 bg-[#EFE8DA] p-1 rounded-lg border border-[#D5CFC3] text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => scrollToView('home')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+              activeMobileView === 'home'
+                ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
+                : 'text-[#5C6069] hover:text-[#242730]'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5 text-[#2B68B4]" />
+            <span>Your Territory (45%)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => scrollToView('opponents')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+              activeMobileView === 'opponents'
+                ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
+                : 'text-[#5C6069] hover:text-[#242730]'
+            }`}
+          >
+            <Target className="w-3.5 h-3.5 text-[#CE4242]" />
+            <span>Opponents (55%)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] font-mono text-[#8C929D]">
+          <MoveHorizontal className="w-3 h-3 text-[#D59926] animate-pulse" />
+          <span>Swipe arena</span>
+        </div>
+      </div>
+
       {/* Arena Content Container: 
-          On Desktop/Tablet: Exactly 45% (Left) / 55% (Right) within this container.
-          On Mobile: Minimum width ensures readability with smooth horizontal scrolling.
+          On Desktop/Laptop: Exactly 45% (Left) / 55% (Right) proportional split.
+          On Mobile/Compact Tablet: Scrollable with tactile ease and zero layout degradation.
       */}
-      <div className="relative z-10 w-full overflow-x-auto pb-2">
-        <div className="min-w-[640px] md:min-w-0 w-full flex items-stretch gap-3 sm:gap-4">
+      <div
+        ref={scrollContainerRef}
+        className="relative z-10 w-full overflow-x-auto pb-2 scroll-smooth"
+        onScroll={(e) => {
+          const target = e.currentTarget;
+          if (target.scrollLeft > target.scrollWidth * 0.2) {
+            if (activeMobileView !== 'opponents') setActiveMobileView('opponents');
+          } else {
+            if (activeMobileView !== 'home') setActiveMobileView('home');
+          }
+        }}
+      >
+        <div className={`${minArenaWidthClass} w-full flex items-stretch gap-2.5 sm:gap-4`}>
           {/* =========================================================================
               1. OWN TERRITORY (HOME) - ALWAYS ON THE LEFT (EXACTLY 45% WIDTH)
               ========================================================================= */}
@@ -110,7 +176,7 @@ export const NotebookBattlefieldArena = ({
               - 3 opponents: 33.333% of 55% = 18.333% each
               ========================================================================= */}
           <div
-            className="shrink-0 flex items-stretch gap-2.5 sm:gap-3"
+            className="shrink-0 flex items-stretch gap-2 sm:gap-3"
             style={{ width: `calc(${proportions.opponentsTotalPercent}% - 17px)` }}
           >
             {opponents.length > 0 ? (
@@ -119,7 +185,6 @@ export const NotebookBattlefieldArena = ({
                   key={opponent.playerId}
                   className="flex-1 min-w-0 flex flex-col"
                   style={{
-                    // Each opponent receives an equal fraction of the 55%
                     flex: '1 1 0%'
                   }}
                 >

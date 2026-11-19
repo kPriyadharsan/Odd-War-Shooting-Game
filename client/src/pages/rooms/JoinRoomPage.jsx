@@ -45,8 +45,8 @@ export const JoinRoomPage = () => {
   };
 
   return (
-    <NotebookBackground showMargin={true} className="py-8 sm:py-12">
-      <div className="max-w-xl mx-auto px-4 sm:px-8 pl-12 sm:pl-20">
+    <NotebookBackground showMargin={true} className="py-4 sm:py-12">
+      <div className="max-w-xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6">

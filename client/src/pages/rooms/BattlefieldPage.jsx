@@ -734,46 +734,46 @@ export const BattlefieldPage = () => {
   );
 
   return (
-    <NotebookBackground className="py-6 sm:py-8 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <NotebookBackground className="py-4 sm:py-8 min-h-screen">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6">
         {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-[#4A4F5B]/20">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[#4A4F5B]/20">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <Link
               to={`/rooms/${room.code}/waiting`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Waiting Room</span>
+              <span className="hidden xs:inline">Waiting Room</span>
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-[#8C929D]">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#8C929D] truncate">
                   OFFICIAL NOTEBOOK BATTLEFIELD
                 </span>
-                <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-pulse shrink-0" />
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#242730]">
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#242730] truncate">
                 ODD WARS Arena — {room.name}
               </h1>
             </div>
           </div>
 
           {/* Quick Match Meta Details & Sound Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Procedural Sound Effects Controls (Task 08) */}
             <SoundControls />
 
             {/* Book Page Count */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FAF6EE] border border-[#23252A]/20 text-xs font-mono text-[#23252A]">
+            <div className="hidden xs:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FAF6EE] border border-[#23252A]/20 text-xs font-mono text-[#23252A]">
               <BookOpen className="w-3.5 h-3.5 text-[#2B68B4]" />
               <span>{room.bookPageCount || 100} Pages</span>
             </div>
 
             {/* Room Code with Copy */}
-            <div className="bg-[#FAF6EE] border-2 border-[#23252A] rounded-lg px-3 py-1 flex items-center gap-2 shadow-xs">
-              <span className="text-[11px] font-mono text-[#8C929D]">CODE:</span>
-              <span className="font-mono font-bold text-base tracking-widest text-[#23252A]">
+            <div className="bg-[#FAF6EE] border-2 border-[#23252A] rounded-lg px-2.5 sm:px-3 py-1 flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0">
+              <span className="text-[10px] sm:text-[11px] font-mono text-[#8C929D]">CODE:</span>
+              <span className="font-mono font-bold text-sm sm:text-base tracking-widest text-[#23252A]">
                 {room.code}
               </span>
               <button
@@ -879,7 +879,7 @@ export const BattlefieldPage = () => {
             <button
               type="button"
               onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs sm:text-sm shadow-sketch transition-all active:scale-95 cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs sm:text-sm shadow-sketch transition-all active:scale-95 cursor-pointer shrink-0 w-full sm:w-auto"
             >
               <Pencil className="w-4 h-4" />
               <span>DRAW ON ROW {eligibleRowNumber}</span>
@@ -978,13 +978,13 @@ export const BattlefieldPage = () => {
           {/* Selected Row Interaction & Manual Drawing Trigger Card */}
           <div className="lg:col-span-1">
             <Card className="p-4 sm:p-5 border-2 border-[#242730] bg-[#FAF6EE] shadow-sm h-full flex flex-col justify-between">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                <div className="flex items-start gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-lg bg-[#242730] text-[#F8F4EB] font-display font-bold text-xl flex items-center justify-center shrink-0">
                     {selectedRowNumber}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <h4 className="font-display font-bold text-sm sm:text-base text-[#242730]">
                         Selected Station: Row {selectedRowNumber}
                       </h4>
@@ -1009,7 +1009,7 @@ export const BattlefieldPage = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenDrawingModal(selectedRowNumber, selectedRowData.currentStage)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#242730] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#242730] shadow-xs cursor-pointer transition-colors shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[#242730] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#242730] shadow-xs cursor-pointer transition-colors shrink-0 w-full sm:w-auto"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   <span>DRAW {selectedRowData.currentStage || 'HEAD'}</span>

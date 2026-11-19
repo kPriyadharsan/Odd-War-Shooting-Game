@@ -132,8 +132,8 @@ export const RoomSummaryPage = () => {
 
   if (error && !room) {
     return (
-      <NotebookBackground showMargin={true} className="py-12">
-        <div className="max-w-xl mx-auto px-4 pl-12 sm:pl-20">
+      <NotebookBackground showMargin={true} className="py-6 sm:py-12">
+        <div className="max-w-xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
           <Card variant="taped" padding="lg" className="text-center">
             <div className="w-12 h-12 rounded-full bg-[#FDF2F2] border border-[#CE4242] text-[#CE4242] flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6" />
@@ -154,8 +154,8 @@ export const RoomSummaryPage = () => {
   }
 
   return (
-    <NotebookBackground showMargin={true} className="py-8 sm:py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-8 pl-12 sm:pl-20">
+    <NotebookBackground showMargin={true} className="py-4 sm:py-12">
+      <div className="max-w-4xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6 flex items-center justify-between">

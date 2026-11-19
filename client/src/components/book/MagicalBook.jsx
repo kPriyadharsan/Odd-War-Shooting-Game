@@ -110,7 +110,7 @@ export const MagicalBook = ({
 
       {/* 3D Perspective Book Wrapper */}
       <div
-        className="relative perspective-[1200px] w-[280px] sm:w-[360px] md:w-[420px] h-[200px] sm:h-[240px] md:h-[270px] flex items-center justify-center"
+        className="relative perspective-[1200px] w-[260px] xs:w-[290px] sm:w-[360px] md:w-[420px] h-[195px] sm:h-[240px] md:h-[270px] flex items-center justify-center max-w-full"
         style={{ perspective: '1200px' }}
       >
         <motion.div
