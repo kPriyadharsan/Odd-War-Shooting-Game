@@ -52,6 +52,7 @@ router.post('/:code/book/open', openRoomBook);
 
 // Manual Character Drawing Engine (Task 09)
 router.post('/:code/drawings', submitRowDrawing);
+router.post('/:code/drawing', submitRowDrawing); // singular alias
 
 // Combat Engine, Shooting & Row Elimination (Task 10)
 router.post('/:code/combat/target', selectCombatTarget);

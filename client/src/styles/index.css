@@ -93,3 +93,135 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #9C9486;
 }
+
+/* =========================================================================
+   TASK REDESIGN: 6 DISTINCT NOTEBOOK PAPER STYLES
+   Pure CSS-driven, lightweight, zero image overhead, high-contrast readable
+   ========================================================================= */
+
+/* 1. Classic Blue Ruled School Notebook */
+.paper-style-classic-blue {
+  background-color: #FAF6ED;
+  background-image:
+    linear-gradient(to right, transparent 55px, rgba(215, 65, 65, 0.40) 56px, transparent 57px),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(43, 104, 180, 0.20) 32px);
+  background-attachment: local;
+}
+
+/* 2. Old Cream Notebook with Faded Blue Lines */
+.paper-style-cream-faded {
+  background-color: #F4EFE2;
+  background-image:
+    linear-gradient(to right, transparent 63px, rgba(74, 110, 150, 0.26) 64px, transparent 65px),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 35px, rgba(74, 110, 150, 0.15) 36px);
+  background-attachment: local;
+}
+
+/* 3. Red-Margin Vintage Notebook */
+.paper-style-red-margin-vintage {
+  background-color: #F6F1E5;
+  background-image:
+    linear-gradient(to right, transparent 51px, rgba(215, 55, 55, 0.50) 52px, transparent 53px, transparent 55px, rgba(215, 55, 55, 0.50) 56px, transparent 57px),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 29px, rgba(90, 100, 115, 0.18) 30px);
+  background-attachment: local;
+}
+
+/* 4. Slightly Yellowed Paper with Grey Ruling */
+.paper-style-yellowed-grey {
+  background-color: #F5ECCF;
+  background-image:
+    linear-gradient(to right, transparent 47px, rgba(50, 55, 65, 0.35) 48px, transparent 49px),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(70, 75, 85, 0.20) 28px);
+  background-attachment: local;
+}
+
+/* 5. Narrow-Spaced Ruled Notebook */
+.paper-style-narrow-ruled {
+  background-color: #F9F6F0;
+  background-image:
+    linear-gradient(to right, transparent 59px, rgba(220, 60, 80, 0.45) 60px, transparent 61px),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 23px, rgba(50, 100, 165, 0.22) 24px);
+  background-attachment: local;
+}
+
+/* 6. Softly Aged Double-Margin Notebook */
+.paper-style-double-margin-aged {
+  background-color: #EFE8D6;
+  background-image:
+    linear-gradient(to right, transparent 49px, rgba(185, 60, 50, 0.35) 50px, transparent 51px, transparent calc(100% - 37px), rgba(185, 60, 50, 0.22) calc(100% - 36px), transparent calc(100% - 35px)),
+    repeating-linear-gradient(to bottom, transparent 0px, transparent 33px, rgba(95, 85, 75, 0.18) 34px);
+  background-attachment: local;
+}
+
+/* Mobile responsive margin offsets */
+@media (max-width: 640px) {
+  .paper-style-classic-blue {
+    background-image:
+      linear-gradient(to right, transparent 27px, rgba(215, 65, 65, 0.35) 28px, transparent 29px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(43, 104, 180, 0.18) 32px);
+  }
+  .paper-style-cream-faded {
+    background-image:
+      linear-gradient(to right, transparent 27px, rgba(74, 110, 150, 0.24) 28px, transparent 29px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 35px, rgba(74, 110, 150, 0.14) 36px);
+  }
+  .paper-style-red-margin-vintage {
+    background-image:
+      linear-gradient(to right, transparent 25px, rgba(215, 55, 55, 0.45) 26px, transparent 27px, transparent 28px, rgba(215, 55, 55, 0.45) 29px, transparent 30px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 29px, rgba(90, 100, 115, 0.16) 30px);
+  }
+  .paper-style-yellowed-grey {
+    background-image:
+      linear-gradient(to right, transparent 25px, rgba(50, 55, 65, 0.30) 26px, transparent 27px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(70, 75, 85, 0.18) 28px);
+  }
+  .paper-style-narrow-ruled {
+    background-image:
+      linear-gradient(to right, transparent 27px, rgba(220, 60, 80, 0.40) 28px, transparent 29px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 23px, rgba(50, 100, 165, 0.20) 24px);
+  }
+  .paper-style-double-margin-aged {
+    background-image:
+      linear-gradient(to right, transparent 25px, rgba(185, 60, 50, 0.30) 26px, transparent 27px),
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 33px, rgba(95, 85, 75, 0.16) 34px);
+  }
+}
+
+/* Notebook physical sheet drop shadows and edge curl */
+.notebook-sheet-shadow {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(35, 30, 20, 0.12),
+    0 24px 60px rgba(20, 15, 10, 0.18),
+    inset 0 0 80px rgba(0, 0, 0, 0.02);
+}
+
+.notebook-inner-sheet {
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset -1px 0 0 rgba(0, 0, 0, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Pencil-styled vertical column dividers (darker and thicker than ruling lines) */
+.pencil-column-divider {
+  border-right-width: 2.5px;
+  border-right-style: solid;
+  border-right-color: #242730;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+.pencil-column-divider-subtle {
+  border-right-width: 1.5px;
+  border-right-style: dashed;
+  border-right-color: rgba(36, 39, 48, 0.45);
+}
+
+/* Notebook hole perforations / spiral marks at top */
+.notebook-binder-holes {
+  background-image: radial-gradient(circle at center, #1C1E24 4px, #4A4F5B 5px, transparent 6px);
+  background-size: 36px 100%;
+  background-repeat: repeat-x;
+}
+

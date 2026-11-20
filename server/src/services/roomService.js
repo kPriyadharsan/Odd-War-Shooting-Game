@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS } from '../models/Room.js';
+import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERRITORY_ROWS, NOTEBOOK_PAPER_STYLES } from '../models/Room.js';
 import { ShadeService } from './shadeService.js';
 import { BookEngine } from '../game-engine/BookEngine.js';
 import { TurnService } from './turnService.js';
@@ -141,6 +141,8 @@ export const roomService = {
       throw err;
     }
 
+    const randomPaperStyle = NOTEBOOK_PAPER_STYLES[Math.floor(Math.random() * NOTEBOOK_PAPER_STYLES.length)] || 'classic-blue';
+
     const hostColorFamily = (hostPlayer.primaryColor || 'BLUE').toUpperCase();
     const hostShade = ShadeService.assignShade([], hostColorFamily, hostPlayer.playerId);
 
@@ -166,6 +168,7 @@ export const roomService = {
       passwordHash: null,
       maxPlayers: validCapacity,
       bookPageCount: parsedPages,
+      paperStyle: randomPaperStyle,
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
@@ -174,6 +177,7 @@ export const roomService = {
         turnNumber: 1,
         activePlayerId: hostPlayer.playerId,
         activePlayerIndex: 0,
+        paperStyle: randomPaperStyle,
         isBookFlipping: false,
         lastFlip: null,
         history: []
@@ -215,6 +219,8 @@ export const roomService = {
       throw err;
     }
 
+    const randomPaperStyle = NOTEBOOK_PAPER_STYLES[Math.floor(Math.random() * NOTEBOOK_PAPER_STYLES.length)] || 'classic-blue';
+
     const hostColorFamily = (hostPlayer.primaryColor || 'BLUE').toUpperCase();
     const hostShade = ShadeService.assignShade([], hostColorFamily, hostPlayer.playerId);
 
@@ -240,6 +246,7 @@ export const roomService = {
       passwordHash,
       maxPlayers: validCapacity,
       bookPageCount: parsedPages,
+      paperStyle: randomPaperStyle,
       status: ROOM_STATUS.WAITING,
       hostId: hostPlayer.playerId,
       hostNickname: hostPlayer.nickname.trim(),
@@ -248,6 +255,7 @@ export const roomService = {
         turnNumber: 1,
         activePlayerId: hostPlayer.playerId,
         activePlayerIndex: 0,
+        paperStyle: randomPaperStyle,
         isBookFlipping: false,
         lastFlip: null,
         history: []

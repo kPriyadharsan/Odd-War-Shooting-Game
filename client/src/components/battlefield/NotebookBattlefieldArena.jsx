@@ -4,15 +4,16 @@ import { TerritoryColumn } from './TerritoryColumn.jsx';
 import { calculateBattlefieldProportions } from '../../store/battlefieldState.js';
 
 /**
- * NotebookBattlefieldArena Component (Tasks 07 & 12)
- * Implements the core 45% / 55% proportional notebook battlefield layout.
+ * NotebookBattlefieldArena Component (Task Redesign)
  *
- * Responsive Architecture:
- * - Own territory ALWAYS appears on the LEFT side (45% width).
- * - Remaining 55% is reserved for all opponents, divided equally.
- * - Mobile & Tablet Responsive: Provides smooth horizontal scrolling with touch gestures
- *   and responsive quick-switcher tabs ("⚔️ Home" / "🎯 Opponents").
- * - Fluid high-resolution scaling across tablets, laptops, and ultra-wide desktops.
+ * Implements the continuous notebook sheet battlefield.
+ * - Current player's territory is ALWAYS on the LEFT (45% width).
+ * - Opponents occupy the remaining 55% width:
+ *   * 1 opponent: 55%
+ *   * 2 opponents: 27.5% each
+ *   * 3 opponents: 18.33% each
+ * - Darker and thicker pencil column dividers.
+ * - Mobile portrait friendly with touch-scroll and home/opponents toggle.
  */
 export const NotebookBattlefieldArena = ({
   players = [],
@@ -46,7 +47,7 @@ export const NotebookBattlefieldArena = ({
     };
   }, [players, currentPlayerId]);
 
-  // 2. Calculate Mathematical Proportions (45% Home, 55% Opponents)
+  // 2. Proportions Calculation (45% Home, 55% Opponents)
   const opponentCount = Math.max(1, opponents.length);
   const proportions = useMemo(
     () => calculateBattlefieldProportions(opponentCount),
@@ -68,45 +69,35 @@ export const NotebookBattlefieldArena = ({
 
   const minArenaWidthClass =
     opponentCount >= 3
-      ? 'min-w-[820px] lg:min-w-0'
+      ? 'min-w-[800px] lg:min-w-0'
       : opponentCount === 2
-      ? 'min-w-[680px] md:min-w-0'
-      : 'min-w-[560px] md:min-w-0';
+      ? 'min-w-[650px] md:min-w-0'
+      : 'min-w-[540px] md:min-w-0';
 
   if (!homePlayer) {
     return (
-      <div className="w-full p-8 text-center bg-[#FAF6EE] rounded-2xl border border-dashed border-[#D5CFC3]">
-        <p className="font-mono text-sm text-[#4A4F5B]">
-          No battlefield warriors detected.
-        </p>
+      <div className="w-full p-8 text-center text-[#4A4F5B] font-mono text-sm">
+        No notebook warriors detected.
       </div>
     );
   }
 
   return (
-    <div
-      className={`relative w-full rounded-2xl border-2 border-[#23252A] bg-[#F8F4EB] p-2.5 sm:p-4 md:p-5 shadow-paper-lg overflow-hidden ${className}`}
-    >
-      {/* Notebook Background Ruling (Light horizontal lines spanning entire arena) */}
-      <div className="absolute inset-0 pointer-events-none opacity-40 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_27px,rgba(130,155,185,0.2)_28px)]" />
-
-      {/* Top Red Notebook Margin Line (School Notebook signature) */}
-      <div className="absolute left-6 sm:left-10 top-0 bottom-0 w-0.5 bg-[#D75050]/20 pointer-events-none z-0" />
-
-      {/* Mobile Responsive Navigation Bar (<md only) */}
-      <div className="relative z-20 flex md:hidden items-center justify-between gap-2 mb-2.5 pb-2 border-b border-[#D5CFC3]">
-        <div className="flex items-center gap-1.5 bg-[#EFE8DA] p-1 rounded-lg border border-[#D5CFC3] text-xs font-mono">
+    <div className={`relative w-full flex-1 flex flex-col ${className}`}>
+      {/* Mobile Responsive Territory Switcher (<md only) */}
+      <div className="flex md:hidden items-center justify-between gap-2 mb-2 pb-1.5 border-b border-[#242730]/20 select-none">
+        <div className="flex items-center gap-1 bg-black/5 p-0.5 rounded-lg border border-[#242730]/20 text-xs font-mono">
           <button
             type="button"
             onClick={() => scrollToView('home')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
               activeMobileView === 'home'
-                ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
+                ? 'bg-[#242730] text-[#FAF6EE] shadow-xs'
                 : 'text-[#5C6069] hover:text-[#242730]'
             }`}
           >
             <Shield className="w-3.5 h-3.5 text-[#2B68B4]" />
-            <span>Your Territory (45%)</span>
+            <span>Your Side (45%)</span>
           </button>
 
           <button
@@ -114,7 +105,7 @@ export const NotebookBattlefieldArena = ({
             onClick={() => scrollToView('opponents')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
               activeMobileView === 'opponents'
-                ? 'bg-[#242730] text-[#F8F4EB] shadow-xs'
+                ? 'bg-[#242730] text-[#FAF6EE] shadow-xs'
                 : 'text-[#5C6069] hover:text-[#242730]'
             }`}
           >
@@ -129,13 +120,13 @@ export const NotebookBattlefieldArena = ({
         </div>
       </div>
 
-      {/* Arena Content Container: 
-          On Desktop/Laptop: Exactly 45% (Left) / 55% (Right) proportional split.
-          On Mobile/Compact Tablet: Scrollable with tactile ease and zero layout degradation.
+      {/* Main Continuous Arena Surface:
+          Desktop: 45% (Home on Left) / 55% (Opponents on Right)
+          Mobile: Horizontal touch-scrollable without page overflow
       */}
       <div
         ref={scrollContainerRef}
-        className="relative z-10 w-full overflow-x-auto pb-2 scroll-smooth"
+        className="w-full flex-1 overflow-x-auto overflow-y-visible pb-1 scroll-smooth"
         onScroll={(e) => {
           const target = e.currentTarget;
           if (target.scrollLeft > target.scrollWidth * 0.2) {
@@ -145,9 +136,9 @@ export const NotebookBattlefieldArena = ({
           }
         }}
       >
-        <div className={`${minArenaWidthClass} w-full flex items-stretch gap-2.5 sm:gap-4`}>
+        <div className={`${minArenaWidthClass} w-full flex items-stretch h-full gap-2 sm:gap-3`}>
           {/* =========================================================================
-              1. OWN TERRITORY (HOME) - ALWAYS ON THE LEFT (EXACTLY 45% WIDTH)
+              1. HOME TERRITORY - ALWAYS POSITIONED FIRST ON THE LEFT (45% WIDTH)
               ========================================================================= */}
           <div
             className="shrink-0 flex flex-col"
@@ -165,28 +156,19 @@ export const NotebookBattlefieldArena = ({
             />
           </div>
 
-          {/* Vertical Pencil Separator Between Own and Opponent Territories */}
-          <div className="w-px bg-gradient-to-b from-transparent via-[#23252A]/30 to-transparent my-2 shrink-0" />
-
           {/* =========================================================================
-              2. OPPONENTS TERRITORY AREA - TAKES THE REMAINING 55% WIDTH
-              Divided equally among all opponents:
-              - 1 opponent: 100% of 55% = 55%
-              - 2 opponents: 50% of 55% = 27.5% each
-              - 3 opponents: 33.333% of 55% = 18.333% each
+              2. OPPONENTS' TERRITORIES - TAKES REMAINING 55% WIDTH
               ========================================================================= */}
           <div
             className="shrink-0 flex items-stretch gap-2 sm:gap-3"
-            style={{ width: `calc(${proportions.opponentsTotalPercent}% - 17px)` }}
+            style={{ width: `calc(${proportions.opponentsTotalPercent}% - 12px)` }}
           >
             {opponents.length > 0 ? (
               opponents.map((opponent, idx) => (
                 <div
                   key={opponent.playerId}
                   className="flex-1 min-w-0 flex flex-col"
-                  style={{
-                    flex: '1 1 0%'
-                  }}
+                  style={{ flex: '1 1 0%' }}
                 >
                   <TerritoryColumn
                     player={opponent}
@@ -202,13 +184,12 @@ export const NotebookBattlefieldArena = ({
                 </div>
               ))
             ) : (
-              // If match is opened before opponent joins (fallback placeholder)
-              <div className="flex-1 flex flex-col items-center justify-center p-6 rounded-xl border border-dashed border-[#D5CFC3] bg-[#FAF6EE]/50 text-center">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#242730]/20 rounded-xl text-center">
                 <span className="font-display font-bold text-sm text-[#4A4F5B]">
                   Awaiting Opponent...
                 </span>
                 <span className="font-mono text-xs text-[#8C929D] mt-1">
-                  Opponent territory will occupy 55% of the battlefield.
+                  Opponent territory will occupy 55% of the notebook sheet.
                 </span>
               </div>
             )}

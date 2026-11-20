@@ -9,34 +9,46 @@ import {
   Sparkles,
   AlertCircle,
   Clock,
-  Layers,
   Crown,
+  Pencil,
+  Volume2,
+  VolumeX,
+  LogOut,
+  Target,
+  Zap,
   Info,
-  Pencil
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  NotebookBackground,
-  Button,
-  IconButton,
-  Card,
   LoadingIndicator,
-  GameFeedbackToast
+  GameFeedbackToast,
+  Button
 } from '../../components/ui/index.js';
-import { SoundControls } from '../../components/ui/SoundControls.jsx';
 import { NotebookBattlefieldArena } from '../../components/battlefield/NotebookBattlefieldArena.jsx';
-import { MagicalBookStage } from '../../components/book/MagicalBookStage.jsx';
-import { ResultHistoryPanel } from '../../components/book/ResultHistoryPanel.jsx';
+import { MagicalBookOverlay } from '../../components/book/MagicalBookOverlay.jsx';
 import { CharacterDrawingModal } from '../../components/drawing/CharacterDrawingModal.jsx';
-import { CombatActionPanel } from '../../components/combat/CombatActionPanel.jsx';
 import { ShootingAnimationOverlay } from '../../components/combat/ShootingAnimationOverlay.jsx';
 import { VictoryModal } from '../../components/combat/VictoryModal.jsx';
-import { CombatLogFeed } from '../../components/combat/CombatLogFeed.jsx';
 import { roomApi } from '../../services/roomApi.js';
 import { getSocket } from '../../services/socket.js';
 import { soundEffects } from '../../services/soundEffects.js';
 import { getPlayerSession } from '../../store/playerSession.js';
+import { getPaperStyle, DEFAULT_PAPER_STYLE } from '../../config/paperStyles.js';
 
+/**
+ * BattlefieldPage Component (Single Notebook Sheet Redesign)
+ *
+ * Implements:
+ * - ONE CONTINUOUS NOTEBOOK SHEET as the entire game interface.
+ * - Random notebook paper style selected authoritatively and synchronized across all players.
+ * - 45% Home territory on the left, 55% Opponents territory on the right.
+ * - Five playable rows: 1, 3, 5, 7, 9.
+ * - Magical Book as a temporary cinematic overlay popup over the notebook sheet.
+ * - Drawing popup on eligible row selection.
+ * - Game controls naturally integrated into the notebook sheet margins.
+ * - Authoritative multiplayer synchronization via Socket.IO.
+ */
 export const BattlefieldPage = () => {
   const { code: routeCode, roomId } = useParams();
   const roomCode = (routeCode || roomId || '').toUpperCase().trim();
@@ -50,21 +62,24 @@ export const BattlefieldPage = () => {
   const [copied, setCopied] = useState(false);
   const [selectedRowNumber, setSelectedRowNumber] = useState(1);
   const [feedbackToast, setFeedbackToast] = useState(null);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  // Magical Book State (Task 08)
+  // Magical Book Overlay State (Part 5)
+  const [isBookOverlayOpen, setIsBookOverlayOpen] = useState(false);
   const [isFlipping, setIsFlipping] = useState(false);
   const [lastOutcome, setLastOutcome] = useState(null);
   const [bookActionLoading, setBookActionLoading] = useState(false);
   const [bookError, setBookError] = useState(null);
 
-  // Manual Drawing Engine State (Task 09)
+  // Manual Drawing Overlay State (Part 6)
   const [isDrawingModalOpen, setIsDrawingModalOpen] = useState(false);
   const [drawingRowNumber, setDrawingRowNumber] = useState(1);
   const [drawingStage, setDrawingStage] = useState('HEAD');
   const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false);
   const [drawingError, setDrawingError] = useState(null);
 
-  // Authoritative Combat Engine State (Task 10)
+  // Authoritative Combat Engine State
   const [selectedTarget, setSelectedTarget] = useState(null); // { playerId, rowNumber }
   const [isShootingActive, setIsShootingActive] = useState(false);
   const [isFiringShot, setIsFiringShot] = useState(false);
@@ -92,12 +107,21 @@ export const BattlefieldPage = () => {
     triggerToast(msg, type);
   };
 
+  // Sound toggle helper
+  const handleToggleSound = () => {
+    const nextMuted = soundEffects.toggleMute();
+    setIsSoundMuted(nextMuted);
+    if (!nextMuted) {
+      soundEffects.playButtonClick();
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const socket = getSocket();
     socketRef.current = socket;
 
-    // Play book entrance sound on battlefield load
+    // Play book entrance chime
     soundEffects.playBookEntrance();
 
     const initializeBattlefield = async () => {
@@ -133,7 +157,7 @@ export const BattlefieldPage = () => {
           }
         );
 
-        // Ensure match transitions from STARTING to PLAYING (Task 11)
+        // Ensure match transitions to PLAYING
         socket.emit('START_PLAYING', { roomCode });
         roomApi.startPlaying({ code: roomCode }).catch(() => {});
       } catch (err) {
@@ -164,19 +188,20 @@ export const BattlefieldPage = () => {
       triggerToast({
         type: 'INFO',
         title: 'WARRIOR DISCONNECTED',
-        message: 'A player disconnected from the notebook battlefield.'
+        message: 'A player disconnected from the notebook match.'
       });
     };
 
-    // Task 08: Magical Book Socket Events
+    // Magical Book Socket Events (Part 5)
     const handleBookOpening = () => {
       if (!isMounted) return;
       setIsFlipping(true);
+      setIsBookOverlayOpen(true);
       setBookError(null);
       triggerToast({
         type: 'BOOK_OPENED',
-        title: 'BOOK OPENED',
-        message: 'Flipping through the magical ruled pages of fate...'
+        title: 'BOOK OF FATE OPENED',
+        message: 'Flipping through the ruled pages...'
       });
     };
 
@@ -185,9 +210,9 @@ export const BattlefieldPage = () => {
       setIsFlipping(false);
       setBookActionLoading(false);
       setLastOutcome(outcome);
+      setIsBookOverlayOpen(true); // Ensure overlay shows the result
       if (updatedRoom) setRoom(updatedRoom);
 
-      // If odd digit, automatically focus that row on home territory if it was your turn
       if (outcome?.isOdd && outcome?.targetRow) {
         if (outcome.playerId === currentPlayer.playerId) {
           setSelectedRowNumber(outcome.targetRow);
@@ -201,7 +226,7 @@ export const BattlefieldPage = () => {
         triggerToast({
           type: 'NO_ACTION',
           title: 'NO ACTION',
-          message: `${outcome?.nickname} drew Page ${outcome?.pageNumber} (Even Digit). Turn passes to next warrior.`
+          message: `${outcome?.nickname} drew Page ${outcome?.pageNumber} (Even Digit). Turn passes.`
         });
       }
     };
@@ -213,7 +238,7 @@ export const BattlefieldPage = () => {
       setBookError(err.message || 'Could not open book');
     };
 
-    // Task 09: Manual Drawing Socket Events
+    // Drawing Socket Events (Part 6)
     const handleDrawingUpdated = (data) => {
       if (!isMounted) return;
       if (data.room) setRoom(data.room);
@@ -221,7 +246,7 @@ export const BattlefieldPage = () => {
       triggerToast({
         type: 'DRAWING_COMPLETED',
         title: 'STAGE COMPLETED',
-        message: `Warrior successfully sketched ${data.stage} on Row ${data.rowNumber}!`
+        message: `Warrior sketched ${data.stage} on Row ${data.rowNumber}!`
       });
     };
 
@@ -231,7 +256,7 @@ export const BattlefieldPage = () => {
       setIsSubmittingDrawing(false);
     };
 
-    // Task 10: Combat Socket Events
+    // Combat Socket Events
     const handleShotFired = (data) => {
       if (!isMounted) return;
       if (data.room) setRoom(data.room);
@@ -280,7 +305,7 @@ export const BattlefieldPage = () => {
       setIsFiringShot(false);
     };
 
-    // Task 11: Turn Lifecycle Socket Events
+    // Turn Lifecycle Socket Events
     const handleTurnStarted = (data) => {
       if (!isMounted) return;
       if (data.room) setRoom(data.room);
@@ -291,14 +316,6 @@ export const BattlefieldPage = () => {
           type: 'YOUR_TURN',
           title: 'YOUR TURN',
           message: `Turn #${data.turnNumber}: Open the Magical Book of Fate to activate a station!`
-        });
-      } else {
-        const activeName =
-          data.room?.players?.find((p) => p.playerId === data.activePlayerId)?.nickname || 'Another warrior';
-        triggerToast({
-          type: 'OPPONENT_TURN',
-          title: "OPPONENT'S TURN",
-          message: `Turn #${data.turnNumber}: Waiting for ${activeName} to open the book.`
         });
       }
     };
@@ -320,20 +337,14 @@ export const BattlefieldPage = () => {
       triggerToast({
         type: 'PLAYER_ELIMINATED',
         title: 'WARRIOR ELIMINATED',
-        message: `☠️ Warrior ${data.targetNickname || 'Player'} has lost all 5 stations and is out!`
+        message: `☠️ Warrior ${data.targetNickname || 'Player'} has lost all 5 stations!`
       });
-    };
-
-    const handleAmmunitionUpdated = (data) => {
-      if (!isMounted) return;
-      if (data.room) setRoom(data.room);
     };
 
     socket.on('room:state', handleRoomState);
     socket.on('ROOM_STATE', handleRoomState);
     socket.on('room:player_left', handlePlayerLeft);
 
-    // Book events
     socket.on('BOOK_OPENING', handleBookOpening);
     socket.on('book:opening', handleBookOpening);
     socket.on('BOOK_RESULT', handleBookResult);
@@ -341,7 +352,6 @@ export const BattlefieldPage = () => {
     socket.on('BOOK_ERROR', handleBookError);
     socket.on('book:error', handleBookError);
 
-    // Drawing events
     socket.on('DRAWING_UPDATED', handleDrawingUpdated);
     socket.on('drawing:updated', handleDrawingUpdated);
     socket.on('DRAWING_STAGE_COMPLETED', handleDrawingUpdated);
@@ -349,7 +359,6 @@ export const BattlefieldPage = () => {
     socket.on('DRAWING_ERROR', handleDrawingError);
     socket.on('drawing:error', handleDrawingError);
 
-    // Combat events (Task 10)
     socket.on('SHOT_FIRED', handleShotFired);
     socket.on('combat:shot_fired', handleShotFired);
     socket.on('ROW_ELIMINATED', handleRowEliminated);
@@ -359,7 +368,6 @@ export const BattlefieldPage = () => {
     socket.on('COMBAT_ERROR', handleCombatError);
     socket.on('combat:error', handleCombatError);
 
-    // Turn & Match Lifecycle events (Task 11)
     socket.on('TURN_STARTED', handleTurnStarted);
     socket.on('turn:started', handleTurnStarted);
     socket.on('TURN_UPDATED', handleTurnUpdated);
@@ -368,8 +376,6 @@ export const BattlefieldPage = () => {
     socket.on('turn:completed', handleTurnCompleted);
     socket.on('PLAYER_ELIMINATED', handlePlayerEliminated);
     socket.on('player:eliminated', handlePlayerEliminated);
-    socket.on('AMMUNITION_UPDATED', handleAmmunitionUpdated);
-    socket.on('ammunition:updated', handleAmmunitionUpdated);
 
     return () => {
       isMounted = false;
@@ -404,8 +410,6 @@ export const BattlefieldPage = () => {
       socket.off('turn:completed', handleTurnCompleted);
       socket.off('PLAYER_ELIMINATED', handlePlayerEliminated);
       socket.off('player:eliminated', handlePlayerEliminated);
-      socket.off('AMMUNITION_UPDATED', handleAmmunitionUpdated);
-      socket.off('ammunition:updated', handleAmmunitionUpdated);
     };
   }, [roomCode, currentPlayer.playerId]);
 
@@ -445,11 +449,24 @@ export const BattlefieldPage = () => {
     return null;
   }, [lastOutcome, currentPlayer.playerId]);
 
-  // Task 08: Handle OPEN THE BOOK Action
+  // Active player information
+  const activePlayerId = room?.gameState?.activePlayerId || room?.players?.[0]?.playerId;
+  const isMyTurn = activePlayerId === currentPlayer.playerId;
+  const activePlayer = room?.players?.find((p) => p.playerId === activePlayerId) || {
+    nickname: 'Warrior',
+    assignedShade: { hex: '#2B68B4' }
+  };
+
+  // Part 2: Selected Paper Style (Server-authoritative & synchronized)
+  const paperStyleId = room?.gameState?.paperStyle || room?.paperStyle || DEFAULT_PAPER_STYLE;
+  const paperStyleConfig = getPaperStyle(paperStyleId);
+
+  // Part 5: Handle OPEN THE BOOK Action (Overlay popup)
   const handleOpenBook = async () => {
     if (isFlipping || bookActionLoading) return;
     setBookActionLoading(true);
     setBookError(null);
+    setIsBookOverlayOpen(true);
 
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
@@ -488,9 +505,9 @@ export const BattlefieldPage = () => {
     }
   };
 
-  // Task 09: Open Drawing Modal for a Row
+  // Part 6: Open Drawing Popup for an Eligible Row
   const handleOpenDrawingModal = (rowNum, stageOverride = null) => {
-    const targetRow = rowNum || selectedRowNumber || 1;
+    const targetRow = rowNum || eligibleRowNumber || selectedRowNumber || 1;
     const targetRowData = homeRowStates.find((r) => r.rowNumber === targetRow);
     const stage = stageOverride || targetRowData?.currentStage || 'HEAD';
 
@@ -500,7 +517,7 @@ export const BattlefieldPage = () => {
     setIsDrawingModalOpen(true);
   };
 
-  // Task 09: Handle Drawing Submission
+  // Part 6: Handle Drawing Submission
   const handleSubmitDrawing = async ({ rowNumber, stage, strokeData }) => {
     setIsSubmittingDrawing(true);
     setDrawingError(null);
@@ -538,7 +555,7 @@ export const BattlefieldPage = () => {
       }
 
       soundEffects.playMagicShimmer();
-      showNotification(`Successfully completed and saved ${stage} on Row ${rowNumber}!`);
+      showNotification(`Saved ${stage} on Row ${rowNumber}!`);
       setIsDrawingModalOpen(false);
     } catch (err) {
       setDrawingError(err.message || 'Failed to submit drawing');
@@ -547,7 +564,7 @@ export const BattlefieldPage = () => {
     }
   };
 
-  // Task 10: Combat Target Selection
+  // Combat Target Selection
   const handleSelectTarget = (targetPlayerId, targetRowNumber) => {
     if (targetPlayerId === currentPlayer.playerId) {
       setCombatError('Friendly fire blocked! You cannot attack your own territory.');
@@ -571,7 +588,6 @@ export const BattlefieldPage = () => {
     setSelectedTarget({ playerId: targetPlayerId, rowNumber: targetRowNumber });
     soundEffects.playPencilStrike();
 
-    // Inform server via Socket.IO
     socketRef.current?.emit(
       'SELECT_TARGET',
       {
@@ -594,21 +610,18 @@ export const BattlefieldPage = () => {
     setCombatError(null);
   };
 
-  // Task 10: Authoritative Combat Fire Shot
+  // Combat Execution
   const handleFireShot = async () => {
     if (!selectedTarget || isFiringShot) return;
-
     setIsFiringShot(true);
     setCombatError(null);
 
     const actionId = `shot_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     try {
-      // 1. Immediate visual & sound trigger for feedback
       soundEffects.playGunshot();
       setIsShootingActive(true);
 
-      // 2. Emit via Socket.IO
       socketRef.current?.emit(
         'FIRE_SHOT',
         {
@@ -627,7 +640,6 @@ export const BattlefieldPage = () => {
         }
       );
 
-      // 3. REST API execution
       const result = await roomApi.fireCombatShot({
         code: room.code,
         playerId: currentPlayer.playerId,
@@ -652,7 +664,7 @@ export const BattlefieldPage = () => {
     }
   };
 
-  // Task 11: Pass Active Turn
+  // Pass Turn
   const handlePassTurn = async () => {
     try {
       socketRef.current?.emit('PASS_TURN', {
@@ -672,51 +684,44 @@ export const BattlefieldPage = () => {
 
   if (isLoading) {
     return (
-      <NotebookBackground className="py-16">
-        <div className="max-w-4xl mx-auto px-4 flex flex-col items-center justify-center min-h-[400px]">
-          <LoadingIndicator size="lg" text="Unfolding Notebook Battlefield..." />
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#23201C] p-4">
+        <div className="w-full max-w-md p-8 rounded-2xl bg-[#FAF6EE] border-2 border-[#242730] shadow-2xl text-center paper-style-classic-blue">
+          <LoadingIndicator size="lg" text="Unfolding Notebook Sheet..." />
           <p className="font-handwriting text-sm text-[#4A4F5B] mt-2">
-            Awakening the Magical Book of Fate & establishing player territories...
+            Sharpening pencils & establishing player territory columns...
           </p>
         </div>
-      </NotebookBackground>
+      </div>
     );
   }
 
   if (error || !room) {
     return (
-      <NotebookBackground className="py-12">
-        <div className="max-w-md mx-auto px-4 text-center">
-          <Card className="p-8">
-            <div className="w-12 h-12 rounded-full bg-[#FDF2F2] border border-[#CE4242]/30 flex items-center justify-center mx-auto mb-4 text-[#CE4242]">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <h2 className="font-display text-xl font-bold text-[#242730] mb-2">
-              Battlefield Unavailable
-            </h2>
-            <p className="font-mono text-sm text-[#4A4F5B] mb-6">
-              {error || 'Room not found.'}
-            </p>
-            <Button variant="primary" onClick={() => navigate('/rooms')}>
-              Return to Rooms Lobby
-            </Button>
-          </Card>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#23201C] p-4">
+        <div className="w-full max-w-md p-8 rounded-2xl bg-[#FAF6EE] border-2 border-[#242730] shadow-2xl text-center paper-style-classic-blue">
+          <div className="w-12 h-12 rounded-full bg-[#FDF2F2] border border-[#CE4242]/30 flex items-center justify-center mx-auto mb-4 text-[#CE4242]">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#242730] mb-2">
+            Notebook Arena Unavailable
+          </h2>
+          <p className="font-mono text-sm text-[#4A4F5B] mb-6">
+            {error || 'Match room not found.'}
+          </p>
+          <Button variant="primary" onClick={() => navigate('/lobby')}>
+            Return to Game Lobby
+          </Button>
         </div>
-      </NotebookBackground>
+      </div>
     );
   }
-
-  const isMatchStarted = room.status === 'STARTING' || room.status === 'PLAYING';
-  const playerCount = room.players?.length || 0;
-  const opponentCount = Math.max(1, playerCount - 1);
 
   // Active drawings for drawing modal
   const activeModalRowData = homeRowStates.find((r) => r.rowNumber === drawingRowNumber);
   const activePreviousDrawings = activeModalRowData?.drawings || null;
 
-  // Task 10: Combat calculations
+  // Combat check
   const targetOpponent = room.players?.find((p) => p.playerId === selectedTarget?.playerId) || null;
-  const isMyTurn = !room.gameState?.activePlayerId || room.gameState.activePlayerId === currentPlayer.playerId;
   const isAttackerArmed = Boolean(
     selectedRowData?.drawings?.HEAD &&
       selectedRowData?.drawings?.BODY &&
@@ -733,233 +738,169 @@ export const BattlefieldPage = () => {
       (room.status === 'FINISHED' && homePlayer && !homePlayer.isEliminated)
   );
 
+  const turnNumber = room.gameState?.turnNumber || 1;
+  const isAwaitingBook = isMyTurn && room.status === 'PLAYING' && room.gameState?.turnPhase === 'AWAITING_BOOK';
+
   return (
-    <NotebookBackground className="py-4 sm:py-8 min-h-screen">
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[#4A4F5B]/20">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <Link
-              to={`/rooms/${room.code}/waiting`}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors shrink-0"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden xs:inline">Waiting Room</span>
-            </Link>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#8C929D] truncate">
-                  OFFICIAL NOTEBOOK BATTLEFIELD
-                </span>
-                <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-pulse shrink-0" />
+    // Outer desk container (Desktop: warm study desk backdrop; Mobile: full-bleed sheet)
+    <div className="min-h-screen w-full bg-[#201D1A] sm:py-4 md:py-6 sm:px-4 md:px-8 flex flex-col items-center justify-start overflow-x-hidden">
+      {/* =========================================================================
+          PART 1 & PART 2: THE SINGLE CONTINUOUS NOTEBOOK SHEET
+          The sheet ITSELF is the entire game interface.
+          ========================================================================= */}
+      <div
+        className={`w-full max-w-6xl min-h-[calc(100vh-2rem)] rounded-none sm:rounded-2xl md:rounded-3xl border-0 sm:border-2 sm:border-[#242730] relative overflow-hidden flex flex-col notebook-sheet-shadow notebook-inner-sheet transition-colors duration-300 ${paperStyleConfig.className}`}
+        style={{
+          backgroundColor: paperStyleConfig.bgHex
+        }}
+      >
+        {/* Binder Perforations / Spiral Holes at the very top */}
+        <div className="w-full h-3.5 opacity-35 notebook-binder-holes shrink-0 select-none hidden sm:block" />
+
+        {/* =========================================================================
+            PART 7: GAME CONTROLS INTEGRATED NATURALLY INTO NOTEBOOK SHEET MARGINS
+            No external dashboard - cleanly stamped into the notebook sheet header.
+            ========================================================================= */}
+        <header className="px-3 sm:px-6 pt-2 pb-2.5 border-b-2 border-[#242730] shrink-0 select-none">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Top-Left: Notebook Sheet Title & Paper Style Watermark */}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2E8557] animate-pulse shrink-0" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-display font-black text-sm sm:text-base text-[#23252A] tracking-tight truncate">
+                    ODD WARS • {room.name}
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-mono text-[#5C6069]">
+                  <span className="truncate max-w-[120px] sm:max-w-none">
+                    Sheet: <strong>{paperStyleConfig.name}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>{room.bookPageCount || 100} Pages</span>
+                </div>
               </div>
-              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#242730] truncate">
-                ODD WARS Arena — {room.name}
-              </h1>
-            </div>
-          </div>
-
-          {/* Quick Match Meta Details & Sound Controls */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-            {/* Procedural Sound Effects Controls (Task 08) */}
-            <SoundControls />
-
-            {/* Book Page Count */}
-            <div className="hidden xs:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FAF6EE] border border-[#23252A]/20 text-xs font-mono text-[#23252A]">
-              <BookOpen className="w-3.5 h-3.5 text-[#2B68B4]" />
-              <span>{room.bookPageCount || 100} Pages</span>
             </div>
 
-            {/* Room Code with Copy */}
-            <div className="bg-[#FAF6EE] border-2 border-[#23252A] rounded-lg px-2.5 sm:px-3 py-1 flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0">
-              <span className="text-[10px] sm:text-[11px] font-mono text-[#8C929D]">CODE:</span>
-              <span className="font-mono font-bold text-sm sm:text-base tracking-widest text-[#23252A]">
-                {room.code}
-              </span>
+            {/* Top-Center: Authoritative Turn Stamp & Prominent Action Trigger */}
+            <div className="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto justify-between sm:justify-center">
+              <div
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 font-mono text-xs font-black shadow-xs ${
+                  isMyTurn
+                    ? 'bg-[#2E8557] border-[#242730] text-white animate-pulse'
+                    : 'bg-black/5 border-[#242730]/30 text-[#4A4F5B]'
+                }`}
+              >
+                <span>TURN #{turnNumber}</span>
+                <span>•</span>
+                <span>{isMyTurn ? 'YOUR TURN' : `${activePlayer.nickname}'s Turn`}</span>
+              </div>
+
+              {/* ACTION BUTTON: OPEN BOOK (Visible when it's your turn to flip) */}
+              {isAwaitingBook && (
+                <button
+                  type="button"
+                  onClick={handleOpenBook}
+                  disabled={bookActionLoading || isFlipping}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#D59926] hover:bg-[#B8811B] text-[#242730] font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#242730]" />
+                  <span>OPEN MAGICAL BOOK</span>
+                </button>
+              )}
+
+              {/* ACTION BUTTON: DRAW ON ROW (Visible if odd row eligible) */}
+              {isMyTurn && eligibleRowNumber !== null && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>DRAW ON ROW {eligibleRowNumber}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Top-Right: Ink Library Stamp Code, Sound Toggle & Leave Button */}
+            <div className="flex items-center gap-1.5 sm:gap-2 order-2 sm:order-3 shrink-0">
+              {/* Library Stamped Room Code */}
+              <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded border border-[#242730]/40 bg-black/5 font-mono text-xs text-[#242730]">
+                <span className="text-[10px] text-[#5C6069] hidden xs:inline">CODE:</span>
+                <span className="font-bold tracking-wider">{room.code}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  title="Copy code"
+                  className="p-0.5 hover:bg-black/10 rounded transition-colors"
+                >
+                  {copied ? <Check className="w-3 h-3 text-[#2E8557]" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+
+              {/* Procedural Sound Effects Toggle */}
               <button
                 type="button"
-                onClick={handleCopyCode}
-                title="Copy Room Code"
-                className="p-0.5 hover:bg-[#23252A]/10 rounded transition-colors text-[#23252A]"
+                onClick={handleToggleSound}
+                title={isSoundMuted ? 'Unmute game sounds' : 'Mute game sounds'}
+                className="p-1 sm:p-1.5 rounded border border-[#242730]/40 bg-black/5 hover:bg-black/10 text-[#242730] transition-colors cursor-pointer"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-[#2E8557]" /> : <Copy className="w-3.5 h-3.5" />}
+                {isSoundMuted ? <VolumeX className="w-4 h-4 text-[#CE4242]" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+
+              {/* Leave Match Button (Prompts confirmation) */}
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(true)}
+                title="Leave match"
+                className="p-1 sm:p-1.5 rounded border border-[#242730]/40 bg-black/5 hover:bg-[#FDF2F2] hover:text-[#CE4242] text-[#5C6069] transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Notebook Visual Game Feedback Toast (Task 12) */}
-        <AnimatePresence>
-          {feedbackToast && (
-            <GameFeedbackToast
-              toast={feedbackToast}
-              onDismiss={() => setFeedbackToast(null)}
-            />
-          )}
-        </AnimatePresence>
+        </header>
 
         {/* =========================================================================
-            TASK 11: AUTHORITATIVE MATCH TURN & LIFECYCLE INDICATOR BANNER
+            COMBAT AIMING STRIP: Appears seamlessly when targeting an opponent row
             ========================================================================= */}
-        <div className="mb-5 p-3.5 sm:p-4 rounded-xl border-2 border-[#242730] bg-[#FFFDF9] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-base border-2 shrink-0 ${
-                isMyTurn
-                  ? 'bg-[#2E8557] border-[#242730] text-white shadow-xs animate-pulse'
-                  : 'bg-[#FAF6EE] border-[#D5CFC3] text-[#8C929D]'
-              }`}
-            >
-              #{room.gameState?.turnNumber || 1}
+        {selectedTarget && targetOpponent && (
+          <div className="px-3 sm:px-6 py-2 bg-[#FFF3F3] border-b-2 border-[#CE4242] flex items-center justify-between gap-3 text-xs font-mono shrink-0 select-none">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-[#CE4242] animate-ping" />
+              <span className="text-[#CE4242] font-bold uppercase">TARGET ACQUIRED:</span>
+              <span className="font-display font-black text-[#242730] truncate">
+                {targetOpponent.nickname} — Row {selectedTarget.rowNumber}
+              </span>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs uppercase tracking-wider text-[#8C929D]">
-                  TURN #{room.gameState?.turnNumber || 1} •{' '}
-                  {isMyTurn ? (
-                    <strong className="text-[#2E8557]">YOUR TURN</strong>
-                  ) : (
-                    <span>
-                      ACTIVE: <strong>{room.players?.find((p) => p.playerId === room.gameState?.activePlayerId)?.nickname || 'Opponent'}</strong>
-                    </span>
-                  )}
-                </span>
-                {isMyTurn && <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-ping" />}
-              </div>
-
-              <p className="font-display font-bold text-sm text-[#242730] mt-0.5">
-                {room.status === 'FINISHED'
-                  ? `Match Finished! Winner: ${winnerNickname || 'Warrior'}`
-                  : isMyTurn
-                  ? room.gameState?.turnPhase === 'AWAITING_ACTION'
-                    ? `Phase 2: ${room.gameState?.currentTurn?.eligibleAction?.description || 'Execute your eligible action below.'}`
-                    : 'Phase 1: Open the Magical Book to generate your page and activate a station!'
-                  : `Waiting for ${room.players?.find((p) => p.playerId === room.gameState?.activePlayerId)?.nickname || 'opponent'} to take their turn.`}
-              </p>
-            </div>
-          </div>
-
-          {/* Turn Action Controls (Pass Turn if active) */}
-          {isMyTurn && room.status === 'PLAYING' && room.gameState?.turnPhase === 'AWAITING_ACTION' && (
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={handlePassTurn}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D5CFC3] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#5C6069] shadow-xs cursor-pointer transition-colors"
+                onClick={handleClearTarget}
+                className="px-2.5 py-1 rounded border border-[#D5CFC3] hover:bg-white text-[#5C6069] transition-colors cursor-pointer"
               >
-                <span>Pass Turn</span>
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFireShot}
+                disabled={isFiringShot}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#CE4242] hover:bg-[#B03535] text-white font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>{isFiringShot ? 'FIRING...' : 'FIRE SHOT!'}</span>
               </button>
             </div>
-          )}
-        </div>
-
-        {/* Action Prompt Banner: When an odd row is activated for current player */}
-        {eligibleRowNumber !== null && (
-          <motion.div
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="mb-5 p-4 rounded-xl border-2 border-[#2E8557] bg-[#F0F7F3] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#2E8557] text-white flex items-center justify-center font-display font-bold text-lg shadow-sm">
-                {eligibleRowNumber}
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-base text-[#1C5236] flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#D59926]" />
-                  <span>Row {eligibleRowNumber} Action Permitted!</span>
-                </h3>
-                <p className="font-mono text-xs text-[#2E8557]/90 mt-0.5">
-                  The Magical Book selected Row {eligibleRowNumber}. Advance your warrior by drawing your next character stage!
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-xs sm:text-sm shadow-sketch transition-all active:scale-95 cursor-pointer shrink-0 w-full sm:w-auto"
-            >
-              <Pencil className="w-4 h-4" />
-              <span>DRAW ON ROW {eligibleRowNumber}</span>
-            </button>
-          </motion.div>
-        )}
-
-        {/* Status Notice if match has not formally started */}
-        {!isMatchStarted && (
-          <div className="mb-5 p-3.5 rounded-xl border border-[#D59926]/40 bg-[#FCF8EE] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-xs font-mono text-[#96630D]">
-              <Clock className="w-4 h-4 shrink-0 text-[#D59926]" />
-              <span>
-                <strong>Inspection Mode:</strong> Host has not launched the match yet. The Magical Book, territories, and drawing engine are active in practice mode.
-              </span>
-            </div>
-            <Link
-              to={`/rooms/${room.code}/waiting`}
-              className="px-3 py-1 rounded bg-[#242730] text-[#F8F4EB] text-xs font-mono font-bold shrink-0 hover:bg-black transition-colors"
-            >
-              Go to Waiting Room
-            </Link>
           </div>
         )}
 
         {/* =========================================================================
-            TASK 08: 3D MAGICAL BOOK CENTRAL STAGE
+            PART 3 & PART 4: THE NOTEBOOK BATTLEFIELD ARENA
+            Continuous vertical columns with 45% (Home on Left) and 55% (Opponents on Right).
             ========================================================================= */}
-        <div className="mb-8">
-          <MagicalBookStage
-            room={room}
-            currentPlayerId={currentPlayer.playerId}
-            isFlipping={isFlipping}
-            lastOutcome={lastOutcome}
-            onOpenBook={handleOpenBook}
-            isActionLoading={bookActionLoading}
-            error={bookError}
-          />
-        </div>
-
-        {/* Proportional Layout Specification Info Bar */}
-        <div className="flex items-center justify-between text-xs font-mono text-[#5C6069] mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-[#23252A]">Battlefield Territories:</span>
-            <span>Home: <strong>45% (Left)</strong></span>
-            <span>•</span>
-            <span>
-              Opponents ({opponentCount}): <strong>55% Total</strong> (
-              {(55 / opponentCount).toFixed(1)}% each)
-            </span>
-          </div>
-
-          <div className="hidden md:flex items-center gap-1.5 text-[11px] text-[#8C929D]">
-            <Info className="w-3.5 h-3.5" />
-            <span>Stages: HEAD → BODY → GUN → BULLET</span>
-          </div>
-        </div>
-
-        {/* =========================================================================
-            TASK 10 & 11: COMBAT ACTION CONTROL BAR
-            ========================================================================= */}
-        <div className="mb-6">
-          <CombatActionPanel
-            attackerRow={selectedRowNumber}
-            attackerRowData={selectedRowData}
-            selectedTarget={selectedTarget}
-            targetOpponent={targetOpponent}
-            onFireShot={handleFireShot}
-            onClearTarget={handleClearTarget}
-            onPassTurn={handlePassTurn}
-            isFiring={isFiringShot}
-            isMyTurn={isMyTurn}
-            combatError={combatError}
-          />
-        </div>
-
-        {/* =========================================================================
-            TASK 07 & 09 & 10: MAIN BATTLEFIELD ARENA
-            ========================================================================= */}
-        <div className="mb-8">
+        <main className="flex-1 p-2 sm:p-4 md:p-6 flex flex-col min-h-0">
           <NotebookBattlefieldArena
             players={room.players}
             currentPlayerId={currentPlayer.playerId}
@@ -971,93 +912,47 @@ export const BattlefieldPage = () => {
             selectedTarget={selectedTarget}
             onSelectTarget={handleSelectTarget}
           />
-        </div>
+        </main>
 
-        {/* Bottom Section: History & Selected Row Inspector Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Selected Row Interaction & Manual Drawing Trigger Card */}
-          <div className="lg:col-span-1">
-            <Card className="p-4 sm:p-5 border-2 border-[#242730] bg-[#FAF6EE] shadow-sm h-full flex flex-col justify-between">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-[#242730] text-[#F8F4EB] font-display font-bold text-xl flex items-center justify-center shrink-0">
-                    {selectedRowNumber}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <h4 className="font-display font-bold text-sm sm:text-base text-[#242730]">
-                        Selected Station: Row {selectedRowNumber}
-                      </h4>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#2E8557]/10 text-[#2E8557] border border-[#2E8557]/30">
-                        {selectedRowData.status || 'EMPTY'}
-                      </span>
-                    </div>
-                    <p className="font-mono text-xs text-[#5C6069] mt-1">
-                      Current Stage:{' '}
-                      <strong className="text-[#242730]">
-                        {selectedRowData.currentStage || 'HEAD'}
-                      </strong>{' '}
-                      • Bullets:{' '}
-                      <strong className="text-[#242730]">
-                        {selectedRowData.bulletCount || 0}/3 Loaded
-                      </strong>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Direct Manual Draw Button for Selected Row */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenDrawingModal(selectedRowNumber, selectedRowData.currentStage)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[#242730] bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono font-bold text-[#242730] shadow-xs cursor-pointer transition-colors shrink-0 w-full sm:w-auto"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>DRAW {selectedRowData.currentStage || 'HEAD'}</span>
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between text-xs font-mono text-[#8C929D] pt-3 border-t border-[#D5CFC3] mt-3">
-                <span>Task 09 Drawing Active</span>
-                <span>Pencil • Eraser • Undo</span>
-              </div>
-            </Card>
+        {/* =========================================================================
+            BOTTOM MARGIN: QUICK TICKER & NOTEBOOK INSCRIPTION FOOTER
+            ========================================================================= */}
+        <footer className="px-3 sm:px-6 py-2 border-t border-[#242730]/20 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#5C6069] shrink-0 select-none">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#23252A]">Notebook Rules:</span>
+            <span>Head → Body → Gun → Bullet (3 Bullets = Armed)</span>
           </div>
 
-          {/* Combat Log Feed (Task 10) */}
-          <div className="lg:col-span-1">
-            <CombatLogFeed combatLog={room?.gameState?.combatLog || []} className="h-full" />
-          </div>
-
-          {/* Book Result History Panel (Task 08) */}
-          <div className="lg:col-span-1">
-            <ResultHistoryPanel history={room?.gameState?.history || []} />
-          </div>
-        </div>
+          {/* Pass turn option if active and waiting */}
+          {isMyTurn && room.status === 'PLAYING' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePassTurn}
+                className="text-[#8C929D] hover:text-[#242730] underline cursor-pointer"
+              >
+                Pass Turn
+              </button>
+            </div>
+          )}
+        </footer>
       </div>
 
       {/* =========================================================================
-          TASK 10: 2D SHOOTING PROJECTILE ANIMATION OVERLAY
+          PART 5: CINEMATIC MAGICAL BOOK POPUP OVERLAY OVER THE SAME NOTEBOOK SHEET
           ========================================================================= */}
-      <ShootingAnimationOverlay
-        isActive={isShootingActive}
-        onAnimationComplete={() => setIsShootingActive(false)}
+      <MagicalBookOverlay
+        isOpen={isBookOverlayOpen}
+        isFlipping={isFlipping}
+        outcome={lastOutcome}
+        bookPageCount={room.bookPageCount || 100}
+        activePlayerNickname={activePlayer?.nickname}
+        isCurrentPlayer={isMyTurn}
+        onClose={() => setIsBookOverlayOpen(false)}
       />
 
       {/* =========================================================================
-          TASK 10: VICTORY CELEBRATION MODAL
-          ========================================================================= */}
-      <VictoryModal
-        isOpen={isVictoryModalOpen || room.status === 'FINISHED'}
-        winnerNickname={winnerNickname}
-        winnerId={room?.gameState?.winnerId}
-        isCurrentUserWinner={isCurrentUserWinner}
-        totalShotsFired={totalShotsFired}
-        onPlayAgain={() => navigate(`/rooms/${room.code}/waiting`)}
-        onReturnToLobby={() => navigate('/rooms')}
-      />
-
-      {/* =========================================================================
-          TASK 09: CHARACTER DRAWING MODAL
+          PART 6: DRAWING POPUP OVERLAY (STYLED AS AN OVERLAPPING NOTEBOOK PAPER)
           ========================================================================= */}
       <CharacterDrawingModal
         isOpen={isDrawingModalOpen}
@@ -1070,6 +965,71 @@ export const BattlefieldPage = () => {
         isSubmitting={isSubmittingDrawing}
         error={drawingError}
       />
-    </NotebookBackground>
+
+      {/* 2D Shooting Projectile Animation Overlay across notebook sheet */}
+      <ShootingAnimationOverlay
+        isActive={isShootingActive}
+        onAnimationComplete={() => setIsShootingActive(false)}
+      />
+
+      {/* Victory Celebration Modal */}
+      <VictoryModal
+        isOpen={isVictoryModalOpen || room.status === 'FINISHED'}
+        winnerNickname={winnerNickname}
+        winnerId={room?.gameState?.winnerId}
+        isCurrentUserWinner={isCurrentUserWinner}
+        totalShotsFired={totalShotsFired}
+        onPlayAgain={() => navigate(`/rooms/${room.code}/waiting`)}
+        onReturnToLobby={() => navigate('/lobby')}
+      />
+
+      {/* Toast notifications */}
+      <AnimatePresence>
+        {feedbackToast && (
+          <GameFeedbackToast
+            toast={feedbackToast}
+            onDismiss={() => setFeedbackToast(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Leave match confirmation modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm rounded-2xl border-2 border-[#242730] bg-[#FAF6EE] p-5 shadow-2xl text-center paper-style-classic-blue"
+          >
+            <h3 className="font-display font-bold text-lg text-[#23252A] mb-2">
+              Leave Notebook Match?
+            </h3>
+            <p className="font-mono text-xs text-[#5C6069] mb-5">
+              Returning to the lobby will disconnect your pencil warrior from this sheet.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLeaveConfirm(false)}
+              >
+                Keep Playing
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  navigate('/lobby');
+                }}
+                className="bg-[#CE4242] hover:bg-[#B03535] text-white"
+              >
+                Leave Match
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
   );
 };

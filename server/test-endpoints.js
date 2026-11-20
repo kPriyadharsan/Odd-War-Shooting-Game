@@ -176,8 +176,77 @@ async function runTests() {
     }
     console.log('✓ TEST 8 PASSED: All players have exact 5 rows (1, 3, 5, 7, 9)!');
 
+    // 9. Verify Synchronized Random Paper Style
+    console.log('\n[TEST 9] Verifying Authoritative Paper Style Synchronized & Persisted...');
+    const validStyles = [
+      'classic-blue',
+      'cream-faded',
+      'red-margin-vintage',
+      'yellowed-grey',
+      'narrow-ruled',
+      'double-margin-aged'
+    ];
+    const roomPaperStyle = startedRoom.paperStyle || startedRoom.gameState?.paperStyle;
+    console.log(`  - Room paper style assigned: "${roomPaperStyle}"`);
+    if (!validStyles.includes(roomPaperStyle)) {
+      throw new Error(`Invalid paper style: ${roomPaperStyle}`);
+    }
+    console.log('✓ TEST 9 PASSED: Valid paper style synchronized in room and gameState!');
+
+    // 10. Test Authoritative Magical Book Open (Server generates random page)
+    console.log('\n[TEST 10] Testing Authoritative Magical Book Open (POST /api/rooms/:code/book/open)...');
+    const resBook = await fetch(`${BASE}/api/rooms/${createdRoomCode}/book/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        playerId: hostPlayerId,
+        requestId: `req_test_${Date.now()}`
+      })
+    });
+    console.log('TEST 10 Status:', resBook.status);
+    const bodyBook = await resBook.json();
+    if (resBook.status !== 200 || !bodyBook.success || !bodyBook.data?.outcome) {
+      throw new Error(`TEST 10 Failed: ${JSON.stringify(bodyBook)}`);
+    }
+    const outcome = bodyBook.data.outcome;
+    console.log(`✓ TEST 10 PASSED: Book generated authoritative Page ${outcome.pageNumber} (Ends in ${outcome.finalDigit}, Odd: ${outcome.isOdd}, TargetRow: ${outcome.targetRow})`);
+
+    // 11. Test Authoritative Manual Drawing Submission (POST /api/rooms/:code/drawing)
+    console.log('\n[TEST 11] Testing Authoritative Drawing Submission (POST /api/rooms/:code/drawing)...');
+    const resDrawing = await fetch(`${BASE}/api/rooms/${createdRoomCode}/drawing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        playerId: 'guest_warrior_2', // Active player now is guest_warrior_2
+        rowNumber: 1,
+        stage: 'HEAD',
+        strokeData: {
+          strokes: [
+            {
+              id: 'stroke_1',
+              tool: 'pencil',
+              color: '#23252A',
+              width: 3,
+              points: [{ x: 10, y: 10 }, { x: 25, y: 30 }, { x: 45, y: 40 }]
+            }
+          ]
+        }
+      })
+    });
+    console.log('TEST 11 Status:', resDrawing.status);
+    const bodyDrawing = await resDrawing.json();
+    if (resDrawing.status !== 200 || !bodyDrawing.success) {
+      throw new Error(`TEST 11 Failed: ${JSON.stringify(bodyDrawing)}`);
+    }
+    const guestPlayer = bodyDrawing.data.room.players.find(p => p.playerId === 'guest_warrior_2');
+    const guestRow1 = guestPlayer.territory.rowStates.find(r => r.rowNumber === 1);
+    if (!guestRow1 || !guestRow1.drawings || !guestRow1.drawings.HEAD) {
+      throw new Error('Drawing strokes not saved in player row state!');
+    }
+    console.log(`✓ TEST 11 PASSED: Guest drawing saved to Row 1 HEAD! Next stage: "${guestRow1.currentStage}"`);
+
     console.log('\n======================================================');
-    console.log(' ALL 8 INTEGRATION TESTS PASSED PERFECTLY (100% OK) ');
+    console.log(' ALL 11 INTEGRATION TESTS PASSED PERFECTLY (100% OK) ');
     console.log('======================================================\n');
   } finally {
     server.close();

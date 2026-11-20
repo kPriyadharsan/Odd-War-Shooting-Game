@@ -23,6 +23,14 @@ export const ROOM_STATUS = {
 export const ALLOWED_PAGE_COUNTS = [100, 200];
 export const ALLOWED_PLAYER_CAPACITIES = [2, 3, 4];
 export const TERRITORY_ROWS = [1, 3, 5, 7, 9];
+export const NOTEBOOK_PAPER_STYLES = [
+  'classic-blue',
+  'cream-faded',
+  'red-margin-vintage',
+  'yellowed-grey',
+  'narrow-ruled',
+  'double-margin-aged'
+];
 
 const playerShadeSchema = new mongoose.Schema(
   {
@@ -196,6 +204,11 @@ const roomSchema = new mongoose.Schema(
       default: 100,
       enum: ALLOWED_PAGE_COUNTS
     },
+    paperStyle: {
+      type: String,
+      enum: NOTEBOOK_PAPER_STYLES,
+      default: 'classic-blue'
+    },
     status: {
       type: String,
       enum: Object.values(ROOM_STATUS),
@@ -267,6 +280,11 @@ const roomSchema = new mongoose.Schema(
       winnerNickname: {
         type: String,
         default: null
+      },
+      paperStyle: {
+        type: String,
+        enum: NOTEBOOK_PAPER_STYLES,
+        default: 'classic-blue'
       },
       selectedTarget: {
         type: Object,

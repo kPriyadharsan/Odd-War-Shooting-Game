@@ -1,5 +1,5 @@
 import { GAME_RULES_CONFIG } from '../config/gameRulesConfig.js';
-import { TERRITORY_ROWS, ROOM_STATUS } from '../models/Room.js';
+import { TERRITORY_ROWS, ROOM_STATUS, NOTEBOOK_PAPER_STYLES } from '../models/Room.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -29,6 +29,18 @@ export const TurnService = {
     const turnId = `turn_1_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
     if (!room.gameState) room.gameState = {};
+
+    // Select a deterministic random paper style for this match if not yet chosen
+    if (!room.gameState.paperStyle && !room.paperStyle) {
+      const styles = NOTEBOOK_PAPER_STYLES && NOTEBOOK_PAPER_STYLES.length > 0
+        ? NOTEBOOK_PAPER_STYLES
+        : ['classic-blue', 'cream-faded', 'red-margin-vintage', 'yellowed-grey', 'narrow-ruled', 'double-margin-aged'];
+      const chosen = styles[Math.floor(Math.random() * styles.length)];
+      room.gameState.paperStyle = chosen;
+      room.paperStyle = chosen;
+    } else if (room.paperStyle && !room.gameState.paperStyle) {
+      room.gameState.paperStyle = room.paperStyle;
+    }
 
     room.gameState.turnOrder = turnOrder;
     room.gameState.turnNumber = 1;
