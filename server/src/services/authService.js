@@ -302,7 +302,7 @@ export const authService = {
           existingUser.avatarUrl = avatarUrl;
           await existingUser.save();
         }
-        return existingUser;
+        return { user: existingUser, isNewUser: false };
       }
 
       // 2. Check by verified email
@@ -315,7 +315,7 @@ export const authService = {
         }
         await existingUser.save();
         logger.info(`[AuthService] Linked Google ID to existing user account ${email}`);
-        return existingUser;
+        return { user: existingUser, isNewUser: false };
       }
 
       // 3. Create New User with safe guest playerId linking
@@ -345,7 +345,8 @@ export const authService = {
         avatarUrl,
         nickname,
         primaryColor: 'BLUE',
-        assignedShade: { name: 'Blue Ink', hex: '#2563eb' }
+        assignedShade: { name: 'Blue Ink', hex: '#2B68B4' },
+        isProfileComplete: false
       });
 
       // Ensure PlayerStats record exists for this playerId
@@ -359,13 +360,13 @@ export const authService = {
       }
 
       logger.info(`[AuthService] Created new user ${newUser.nickname} (playerId: ${assignedPlayerId}) from Google account`);
-      return newUser;
+      return { user: newUser, isNewUser: true };
     } else {
       // In-memory fallback for dev / test mode
       // Check existing by googleId
       for (const u of inMemoryUsers.values()) {
         if (u.googleId === googleId) {
-          return u;
+          return { user: u, isNewUser: false };
         }
       }
       // Check existing by email
@@ -373,7 +374,7 @@ export const authService = {
         if (u.email === email) {
           u.googleId = googleId;
           u.emailVerified = true;
-          return u;
+          return { user: u, isNewUser: false };
         }
       }
 
@@ -396,7 +397,8 @@ export const authService = {
         avatarUrl,
         nickname,
         primaryColor: 'BLUE',
-        assignedShade: { name: 'Blue Ink', hex: '#2563eb' },
+        assignedShade: { name: 'Blue Ink', hex: '#2B68B4' },
+        isProfileComplete: false,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -420,7 +422,67 @@ export const authService = {
       }
 
       logger.info(`[AuthService] In-memory user ${nickname} created (playerId: ${assignedPlayerId})`);
-      return newUser;
+      return { user: newUser, isNewUser: true };
+    }
+  },
+
+  /**
+   * Updates player's warrior profile (call-sign nickname and primary pencil color/shade)
+   * and marks their identity setup as complete.
+   */
+  updateUserProfile: async ({ playerId, nickname, primaryColor }) => {
+    const colorMap = {
+      RED: { name: 'Red Ink', hex: '#CE4242' },
+      GREEN: { name: 'Chalk Green', hex: '#2E8557' },
+      BLUE: { name: 'Blue Ink', hex: '#2B68B4' },
+      YELLOW: { name: 'Gold Pencil', hex: '#D99426' },
+      BLACK: { name: 'Graphite Pencil', hex: '#2B2D31' }
+    };
+
+    const cleanColor = (primaryColor && colorMap[primaryColor.toUpperCase()]) ? primaryColor.toUpperCase() : 'BLUE';
+    const assignedShade = colorMap[cleanColor];
+    const cleanNickname = nickname.trim();
+
+    const isDbConnected = getDatabaseStatus().connected;
+    if (isDbConnected) {
+      const updatedUser = await User.findOneAndUpdate(
+        { playerId },
+        {
+          nickname: cleanNickname,
+          primaryColor: cleanColor,
+          assignedShade,
+          isProfileComplete: true
+        },
+        { new: true }
+      );
+
+      await PlayerStats.findOneAndUpdate(
+        { playerId },
+        {
+          nickname: cleanNickname,
+          primaryColor: cleanColor
+        }
+      );
+
+      logger.info(`[AuthService] Updated profile for player ${playerId}: nickname=${cleanNickname}, color=${cleanColor}`);
+      return updatedUser;
+    } else {
+      // In-memory update
+      const user = inMemoryUsers.get(playerId);
+      if (user) {
+        user.nickname = cleanNickname;
+        user.primaryColor = cleanColor;
+        user.assignedShade = assignedShade;
+        user.isProfileComplete = true;
+      }
+
+      const stats = inMemoryPlayerStats.get(playerId);
+      if (stats) {
+        stats.nickname = cleanNickname;
+        stats.primaryColor = cleanColor;
+      }
+
+      return user;
     }
   }
 };

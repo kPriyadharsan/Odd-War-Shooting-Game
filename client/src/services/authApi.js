@@ -46,9 +46,32 @@ export const authApi = {
   },
 
   /**
+   * Updates player's profile (call-sign nickname and primary color) on the server.
+   */
+  updateProfile: async ({ nickname, primaryColor }) => {
+    const res = await fetch(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ nickname, primaryColor })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to update profile');
+    }
+
+    const data = await res.json();
+    return data.data?.user || null;
+  },
+
+  /**
    * Constructs the server-side Google OAuth initiation URL with guest linking parameters.
    */
-  getGoogleLoginUrl: (guestPlayerId = null, returnTo = '/profile') => {
+  getGoogleLoginUrl: (guestPlayerId = null, returnTo = '/lobby') => {
     const params = new URLSearchParams();
     if (guestPlayerId) {
       params.set('guestPlayerId', guestPlayerId);

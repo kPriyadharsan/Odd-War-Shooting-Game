@@ -3,7 +3,8 @@ import {
   initiateGoogleAuth,
   handleGoogleCallback,
   getCurrentUser,
-  logoutUser
+  logoutUser,
+  updateProfile
 } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 
@@ -17,6 +18,10 @@ router.get('/google/callback', handleGoogleCallback);
 
 // GET /api/auth/me - Returns current authenticated player & session
 router.get('/me', requireAuth, getCurrentUser);
+
+// PUT & PATCH /api/auth/profile - Updates player nickname & color
+router.put('/profile', requireAuth, updateProfile);
+router.patch('/profile', requireAuth, updateProfile);
 
 // POST /api/auth/logout - Revokes session and clears cookie
 router.post('/logout', logoutUser);

@@ -15,9 +15,13 @@ export const LoginPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/profile', { replace: true });
+      if (!user?.isProfileComplete) {
+        navigate('/profile-setup', { replace: true });
+      } else {
+        navigate('/lobby', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (errorParam) {
@@ -94,7 +98,7 @@ export const LoginPage = () => {
           {/* Sign In Button Action */}
           <div className="space-y-3 pt-2">
             <GoogleSignInButton
-              returnTo="/profile"
+              returnTo="/lobby"
               text="Continue with Google"
               size="lg"
               className="w-full shadow-sketch-sm"

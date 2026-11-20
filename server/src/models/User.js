@@ -72,6 +72,13 @@ const userSchema = new mongoose.Schema(
       hex: { type: String, default: '#2563eb' }
     },
 
+    // Whether the player completed their first-time identity setup form
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+
     // Legacy fields preserved for backward compatibility
     username: {
       type: String,

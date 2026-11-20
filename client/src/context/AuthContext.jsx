@@ -40,6 +40,20 @@ export const AuthProvider = ({ children }) => {
     window.location.href = url;
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      setIsLoading(true);
+      const updated = await authApi.updateProfile(profileData);
+      if (updated) {
+        setUser(updated);
+        syncAuthenticatedPlayer(updated);
+      }
+      return updated;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -64,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         setError,
         loginWithGoogle,
         logout,
+        updateProfile,
         refreshUser: fetchCurrentUser
       }}
     >

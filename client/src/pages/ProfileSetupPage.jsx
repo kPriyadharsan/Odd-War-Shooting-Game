@@ -16,18 +16,36 @@ import { validateNickname } from '../utils/validation.js';
 import { loadProfileDraft, saveProfileDraft } from '../store/gameStore.js';
 import { COLOR_FAMILIES } from '../config/colors.js';
 import { soundEffects } from '../services/soundEffects.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export const ProfileSetupPage = () => {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
+  const { user, isAuthenticated, updateProfile } = useAuth();
 
   // Load existing draft if present
   const [profileDraft, setProfileDraft] = useState(loadProfileDraft);
-  const [nickname, setNickname] = useState(profileDraft.nickname || '');
-  const [colorFamily, setColorFamily] = useState(profileDraft.primaryColor || 'BLUE');
+  const [nickname, setNickname] = useState(profileDraft.nickname || user?.nickname || '');
+  const [colorFamily, setColorFamily] = useState(profileDraft.primaryColor || user?.primaryColor || 'BLUE');
   const [touched, setTouched] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState(null);
+
+  // Pre-fill from Google Profile displayName on first sign-in if not set
+  useEffect(() => {
+    if (user) {
+      if (!nickname || nickname.startsWith('Warrior_') || nickname.startsWith('Player_')) {
+        const candidate = user.displayName ? user.displayName.split(' ')[0].substring(0, 20) : user.nickname;
+        if (candidate) {
+          setNickname(candidate);
+        }
+      }
+      if (user.primaryColor) {
+        setColorFamily(user.primaryColor);
+      }
+    }
+  }, [user]);
 
   // Validate nickname
   const validation = validateNickname(nickname);
@@ -57,10 +75,24 @@ export const ProfileSetupPage = () => {
     setIsReviewOpen(true);
   };
 
-  const handleConfirmReview = () => {
+  const handleConfirmReview = async () => {
     soundEffects.playMagicShimmer();
     setIsReviewOpen(false);
-    navigate('/lobby');
+    setIsSubmitting(true);
+
+    try {
+      if (isAuthenticated) {
+        await updateProfile({
+          nickname: validation.trimmed,
+          primaryColor: colorFamily
+        });
+      }
+    } catch (err) {
+      console.warn('[ProfileSetupPage] Failed to sync profile with server:', err);
+    } finally {
+      setIsSubmitting(false);
+      navigate('/lobby');
+    }
   };
 
   // Quick random generator for fun

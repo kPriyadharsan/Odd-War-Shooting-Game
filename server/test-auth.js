@@ -103,25 +103,28 @@ async function runTests() {
       avatarUrl: 'https://lh3.googleusercontent.com/alice_avatar.jpg'
     };
 
-    const linkedUser = await authService.findOrCreateUserFromGoogle({
+    const { user: linkedUser, isNewUser: isFirstTime } = await authService.findOrCreateUserFromGoogle({
       googleProfile: mockGoogleProfile1,
       guestPlayerId: 'p_guest_tester_123'
     });
 
-    console.log(`[TEST 4] User created: ${linkedUser.nickname}, playerId: ${linkedUser.playerId}, googleId: ${linkedUser.googleId}`);
+    console.log(`[TEST 4] User created: ${linkedUser.nickname}, playerId: ${linkedUser.playerId}, isNewUser: ${isFirstTime}`);
     if (linkedUser.playerId !== 'p_guest_tester_123') {
       throw new Error(`Guest playerId was not linked! Got ${linkedUser.playerId}`);
     }
     if (linkedUser.googleId !== mockGoogleProfile1.googleId) {
       throw new Error('Google provider ID mismatch');
     }
-    console.log('✓ TEST 4 PASSED: Guest playerId seamlessly linked to new Google account.');
+    if (!isFirstTime) {
+      throw new Error('First sign-in should report isNewUser = true');
+    }
+    console.log('✓ TEST 4 PASSED: Guest playerId seamlessly linked and identified as first-time user.');
 
     // -------------------------------------------------------------------------
-    // TEST 5: Existing User Login Idempotency
+    // TEST 5: Existing User Login Idempotency & Profile Completeness
     // -------------------------------------------------------------------------
     console.log('\n[TEST 5] Testing existing user login (idempotency)...');
-    const existingUser = await authService.findOrCreateUserFromGoogle({
+    const { user: existingUser, isNewUser: isSecondTime } = await authService.findOrCreateUserFromGoogle({
       googleProfile: mockGoogleProfile1,
       guestPlayerId: 'p_some_other_guest_id'
     });
@@ -129,7 +132,21 @@ async function runTests() {
     if (existingUser.playerId !== 'p_guest_tester_123') {
       throw new Error('Existing user should retain original playerId and not be overwritten');
     }
-    console.log('✓ TEST 5 PASSED: Existing user login returned original account idempotently.');
+    if (isSecondTime) {
+      throw new Error('Returning user should report isNewUser = false');
+    }
+
+    // Test profile update
+    const updated = await authService.updateUserProfile({
+      playerId: existingUser.playerId,
+      nickname: 'Sharpshooter_Alice',
+      primaryColor: 'RED'
+    });
+    if (updated.nickname !== 'Sharpshooter_Alice' || updated.primaryColor !== 'RED' || !updated.isProfileComplete) {
+      throw new Error('Profile update failed to save custom nickname, color, or mark isProfileComplete');
+    }
+
+    console.log('✓ TEST 5 PASSED: Existing user login returned original account, and profile update succeeded.');
 
     // -------------------------------------------------------------------------
     // TEST 6: Session Creation, Token Hashing & Expiration
@@ -216,7 +233,7 @@ async function runTests() {
       emailVerified: true,
       displayName: 'Alice Pen Replacement'
     };
-    const updatedUser = await authService.findOrCreateUserFromGoogle({
+    const { user: updatedUser } = await authService.findOrCreateUserFromGoogle({
       googleProfile: mockGoogleProfileDuplicate
     });
     if (updatedUser.playerId !== 'p_guest_tester_123' || updatedUser.googleId !== 'google_sub_999999999') {

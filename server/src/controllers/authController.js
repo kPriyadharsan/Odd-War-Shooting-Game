@@ -108,7 +108,7 @@ export const handleGoogleCallback = async (req, res) => {
     });
 
     // 4. Find or create persistent User (safe guest linking)
-    const user = await authService.findOrCreateUserFromGoogle({
+    const { user, isNewUser } = await authService.findOrCreateUserFromGoogle({
       googleProfile,
       guestPlayerId: txData.guestPlayerId
     });
@@ -133,14 +133,46 @@ export const handleGoogleCallback = async (req, res) => {
       path: '/'
     });
 
-    logger.info(`[AuthController] User ${user.nickname} (${user.playerId}) authenticated successfully via Google`);
+    logger.info(`[AuthController] User ${user.nickname} (${user.playerId}) authenticated successfully via Google (isNewUser: ${isNewUser})`);
 
-    // Clean redirect without tokens in URL directly to the frontend application
-    const destination = txData.returnTo && txData.returnTo.startsWith('/') ? txData.returnTo : '/profile';
+    // Intelligent destination routing:
+    // First-time sign-in or incomplete profile -> redirect to /profile-setup (identity creation form)
+    // Existing user with completed profile -> redirect to /lobby (main game dashboard)
+    let destination = '/lobby';
+    if (isNewUser || !user.isProfileComplete) {
+      destination = '/profile-setup';
+    } else if (txData.returnTo && txData.returnTo.startsWith('/') && !['/login', '/profile', '/'].includes(txData.returnTo)) {
+      destination = txData.returnTo;
+    }
+
     return res.redirect(`${frontendOrigin}${destination}`);
   } catch (error) {
     logger.error('[AuthController] Error in Google OAuth callback:', error);
     return res.redirect(`${fallbackOrigin}/login?error=${encodeURIComponent(error.message || 'authentication_failed')}`);
+  }
+};
+
+/**
+ * Updates authenticated player profile (nickname and primary color)
+ * and marks profile onboarding as complete.
+ */
+export const updateProfile = async (req, res) => {
+  try {
+    const { nickname, primaryColor } = req.body;
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 24) {
+      return sendError(res, 'Nickname must be between 2 and 24 characters', 400);
+    }
+
+    const updatedUser = await authService.updateUserProfile({
+      playerId: req.user.playerId,
+      nickname: nickname.trim(),
+      primaryColor
+    });
+
+    return sendSuccess(res, { user: sanitizeUser(updatedUser) }, 'Profile updated successfully');
+  } catch (error) {
+    logger.error('[AuthController] Failed to update profile:', error);
+    return sendError(res, error.message || 'Failed to update profile', 500);
   }
 };
 
