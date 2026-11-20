@@ -18,6 +18,61 @@ const signPayload = (payloadString) => {
 };
 
 /**
+ * Dynamically resolves the frontend origin where the client application is hosted.
+ * Accurately detects Vercel edge proxy headers, origin, referer, or falls back to
+ * configured client URL or the canonical production domain.
+ */
+export const resolveFrontendOrigin = (req) => {
+  if (req) {
+    // 1. Check referer / origin headers (highest accuracy for player's actual browser location)
+    const origin = req.get ? req.get('origin') : req.headers?.['origin'];
+    if (origin && typeof origin === 'string' && !origin.includes('onrender.com')) {
+      return origin.replace(/\/+$/, '');
+    }
+
+    const referer = req.get ? req.get('referer') : req.headers?.['referer'];
+    if (referer && typeof referer === 'string') {
+      try {
+        const parsed = new URL(referer);
+        if (!parsed.hostname.includes('onrender.com')) {
+          return `${parsed.protocol}//${parsed.host}`;
+        }
+      } catch {
+        // ignore malformed referer
+      }
+    }
+
+    // 2. Check proxy forwarding headers (e.g. Vercel edge reverse proxy)
+    const rawForwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
+    if (rawForwardedHost) {
+      const forwardedHost = rawForwardedHost.split(',')[0].trim();
+      const rawForwardedProto = req.get ? req.get('x-forwarded-proto') : req.headers?.['x-forwarded-proto'];
+      const proto = (rawForwardedProto ? rawForwardedProto.split(',')[0].trim() : null) || 'https';
+      return `${proto}://${forwardedHost}`;
+    }
+
+    // 3. Direct host header (if not Render backend domain)
+    const host = req.get ? req.get('host') : req.headers?.['host'];
+    if (host && !host.includes('onrender.com') && !host.includes('localhost')) {
+      const proto = req.protocol || 'https';
+      return `${proto}://${host}`;
+    }
+  }
+
+  // 4. Configured client URL from environment
+  if (config.clientUrl && !config.clientUrl.includes('localhost')) {
+    return config.clientUrl.replace(/\/+$/, '');
+  }
+
+  // 5. In production or on Render, canonical frontend domain is odd-war.vercel.app
+  if (config.nodeEnv === 'production' || process.env.RENDER) {
+    return 'https://odd-war.vercel.app';
+  }
+
+  return 'http://localhost:5173';
+};
+
+/**
  * Dynamically resolves the OAuth callback URL based on incoming request headers
  * (preserving forwarded host from Vercel / reverse proxies) or explicit env variable.
  */
@@ -26,31 +81,13 @@ export const resolveCallbackUrl = (req) => {
     return process.env.GOOGLE_CALLBACK_URL.trim();
   }
 
-  if (req) {
-    const forwardedProto = req.get ? req.get('x-forwarded-proto') : req.headers?.['x-forwarded-proto'];
-    const forwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
-
-    if (forwardedHost) {
-      const proto = forwardedProto || 'https';
-      return `${proto}://${forwardedHost}/api/auth/google/callback`;
-    }
-
-    const host = req.get ? req.get('host') : req.headers?.['host'];
-    if (host && !host.includes('onrender.com')) {
-      const proto = req.protocol || 'http';
-      return `${proto}://${host}/api/auth/google/callback`;
-    }
-
-    if (config.clientUrl && !config.clientUrl.includes('localhost')) {
-      return `${config.clientUrl.replace(/\/+$/, '')}/api/auth/google/callback`;
-    }
-  }
-
-  return config.googleCallbackUrl || 'http://localhost:5173/api/auth/google/callback';
+  const frontendOrigin = resolveFrontendOrigin(req);
+  return `${frontendOrigin}/api/auth/google/callback`;
 };
 
 export const authService = {
   resolveCallbackUrl,
+  resolveFrontendOrigin,
 
   /**
    * Generates a Google OAuth authorization URL with cryptographically secure
@@ -64,6 +101,7 @@ export const authService = {
       throw err;
     }
 
+    const frontendOrigin = resolveFrontendOrigin(req);
     const callbackUrl = resolveCallbackUrl(req);
     const state = crypto.randomBytes(32).toString('hex');
     const nonce = crypto.randomBytes(32).toString('hex');
@@ -75,6 +113,7 @@ export const authService = {
       nonce,
       codeVerifier,
       callbackUrl,
+      frontendOrigin,
       guestPlayerId: typeof guestPlayerId === 'string' && guestPlayerId.startsWith('p_') ? guestPlayerId : null,
       returnTo: typeof returnTo === 'string' && returnTo.startsWith('/') ? returnTo : '/',
       createdAt: Date.now()

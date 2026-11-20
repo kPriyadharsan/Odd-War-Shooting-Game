@@ -66,6 +66,17 @@ app.use('/leaderboard', (req, res, next) => {
   return apiRoutes(req, res, next);
 });
 
+// Browser redirect fallbacks: If a browser navigates to frontend SPA routes directly on the Render API backend
+app.get(['/', '/login', '/profile', '/lobby', '/leaderboard'], (req, res, next) => {
+  if (req.accepts('html')) {
+    const targetOrigin = (config.clientUrl && !config.clientUrl.includes('localhost'))
+      ? config.clientUrl.replace(/\/+$/, '')
+      : 'https://odd-war.vercel.app';
+    return res.redirect(`${targetOrigin}${req.originalUrl}`);
+  }
+  next();
+});
+
 // 404 & Error Handlers
 app.use(notFoundHandler);
 app.use(errorHandler);

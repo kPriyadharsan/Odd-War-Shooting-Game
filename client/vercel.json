@@ -6,6 +6,10 @@
       "destination": "https://odd-war.onrender.com/api/:path*"
     },
     {
+      "source": "/auth/:path*",
+      "destination": "https://odd-war.onrender.com/auth/:path*"
+    },
+    {
       "source": "/socket.io/:path*",
       "destination": "https://odd-war.onrender.com/socket.io/:path*"
     },

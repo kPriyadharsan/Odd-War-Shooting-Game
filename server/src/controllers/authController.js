@@ -20,10 +20,11 @@ const sanitizeUser = (user) => {
  * Generates cryptographically secure state, nonce, and PKCE challenge.
  */
 export const initiateGoogleAuth = async (req, res) => {
+  const frontendOrigin = authService.resolveFrontendOrigin(req);
   try {
     if (!config.isGoogleAuthConfigured) {
       if (req.accepts('html')) {
-        return res.redirect('/login?error=google_not_configured');
+        return res.redirect(`${frontendOrigin}/login?error=google_not_configured`);
       }
       return sendError(
         res,
@@ -54,7 +55,7 @@ export const initiateGoogleAuth = async (req, res) => {
   } catch (error) {
     logger.error('[AuthController] Failed to initiate Google OAuth:', error);
     if (req.accepts('html')) {
-      return res.redirect('/login?error=oauth_init_failed');
+      return res.redirect(`${frontendOrigin}/login?error=oauth_init_failed`);
     }
     return sendError(res, error.message || 'Failed to initiate Google authentication', error.statusCode || 500);
   }
@@ -66,25 +67,26 @@ export const initiateGoogleAuth = async (req, res) => {
  * creates or links player account, and issues an HttpOnly session cookie.
  */
 export const handleGoogleCallback = async (req, res) => {
+  const fallbackOrigin = authService.resolveFrontendOrigin(req);
   try {
     // 1. Check for errors returned by Google
     if (req.query.error) {
       logger.warn(`[AuthController] Google OAuth callback error: ${req.query.error}`);
-      return res.redirect(`/login?error=${encodeURIComponent(req.query.error)}`);
+      return res.redirect(`${fallbackOrigin}/login?error=${encodeURIComponent(req.query.error)}`);
     }
 
     const { code, state } = req.query;
 
     if (!code || !state) {
       logger.warn('[AuthController] Missing code or state in Google callback');
-      return res.redirect('/login?error=missing_code_or_state');
+      return res.redirect(`${fallbackOrigin}/login?error=missing_code_or_state`);
     }
 
     // 2. Validate and consume sealed transaction cookie
     const transactionToken = req.cookies?.odd_wars_oauth_tx;
     if (!transactionToken) {
       logger.warn('[AuthController] Missing OAuth transaction cookie in callback');
-      return res.redirect('/login?error=session_expired');
+      return res.redirect(`${fallbackOrigin}/login?error=session_expired`);
     }
 
     let txData = null;
@@ -92,8 +94,10 @@ export const handleGoogleCallback = async (req, res) => {
       txData = authService.verifyAndConsumeTransaction(transactionToken, state);
     } catch (txError) {
       logger.error('[AuthController] OAuth transaction verification failed:', txError.message);
-      return res.redirect(`/login?error=${encodeURIComponent(txError.message)}`);
+      return res.redirect(`${fallbackOrigin}/login?error=${encodeURIComponent(txError.message)}`);
     }
+
+    const frontendOrigin = txData.frontendOrigin || fallbackOrigin;
 
     // 3. Exchange authorization code & verify ID token
     const googleProfile = await authService.exchangeCodeAndVerifyIdToken({
@@ -131,12 +135,12 @@ export const handleGoogleCallback = async (req, res) => {
 
     logger.info(`[AuthController] User ${user.nickname} (${user.playerId}) authenticated successfully via Google`);
 
-    // Clean redirect without tokens in URL
+    // Clean redirect without tokens in URL directly to the frontend application
     const destination = txData.returnTo && txData.returnTo.startsWith('/') ? txData.returnTo : '/profile';
-    return res.redirect(destination);
+    return res.redirect(`${frontendOrigin}${destination}`);
   } catch (error) {
     logger.error('[AuthController] Error in Google OAuth callback:', error);
-    return res.redirect(`/login?error=${encodeURIComponent(error.message || 'authentication_failed')}`);
+    return res.redirect(`${fallbackOrigin}/login?error=${encodeURIComponent(error.message || 'authentication_failed')}`);
   }
 };
 
