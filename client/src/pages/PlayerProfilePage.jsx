@@ -15,17 +15,26 @@ import {
   ExternalLink,
   ShieldCheck,
   RefreshCw,
-  Award
+  Award,
+  CheckCircle2,
+  AlertTriangle,
+  Lock,
+  Sparkles
 } from 'lucide-react';
-import { getPlayerSession } from '../store/playerSession.js';
+import { getPlayerSession, syncAuthenticatedPlayer } from '../store/playerSession.js';
+import { saveProfileDraft } from '../store/gameStore.js';
 import { matchApi } from '../services/matchApi.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton.jsx';
 import { MatchDetailsModal } from '../components/profile/MatchDetailsModal.jsx';
+import { Modal, Button, Input } from '../components/ui/index.js';
+import { ScrollableDobPicker } from '../components/profile/ScrollableDobPicker.jsx';
+import { ColorFamilySelector } from '../components/profile/ColorFamilySelector.jsx';
+import { validateNickname, validateDob } from '../utils/validation.js';
 
 export const PlayerProfilePage = () => {
   const session = getPlayerSession();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateProfile } = useAuth();
   const [stats, setStats] = useState(null);
   const [matches, setMatches] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, totalPages: 1, total: 0 });
@@ -33,6 +42,88 @@ export const PlayerProfilePage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Edit Profile Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editNickname, setEditNickname] = useState(session.nickname || '');
+  const [editColor, setEditColor] = useState(session.primaryColor || 'BLUE');
+  const [editDob, setEditDob] = useState(() => {
+    if (user?.dob) {
+      try {
+        return new Date(user.dob).toISOString().split('T')[0];
+      } catch {
+        return '2000-01-01';
+      }
+    }
+    return '2000-01-01';
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState(null);
+  const [editSuccess, setEditSuccess] = useState(false);
+
+  // Sync edit state whenever modal opens or user profile updates
+  useEffect(() => {
+    if (isEditModalOpen) {
+      setEditNickname(session.nickname || '');
+      setEditColor(session.primaryColor || 'BLUE');
+      if (user?.dob) {
+        try {
+          setEditDob(new Date(user.dob).toISOString().split('T')[0]);
+        } catch {
+          setEditDob('2000-01-01');
+        }
+      }
+      setEditError(null);
+      setEditSuccess(false);
+    }
+  }, [isEditModalOpen, session.nickname, session.primaryColor, user?.dob]);
+
+  const handleSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    setEditError(null);
+
+    const nickValidation = validateNickname(editNickname);
+    if (!nickValidation.isValid) {
+      setEditError(nickValidation.error);
+      return;
+    }
+
+    const dobValidation = validateDob(editDob);
+    if (!dobValidation.isValid) {
+      setEditError(dobValidation.error);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (isAuthenticated) {
+        const updated = await updateProfile({
+          nickname: nickValidation.trimmed,
+          primaryColor: editColor,
+          dob: dobValidation.isoString
+        });
+        if (updated) {
+          syncAuthenticatedPlayer(updated);
+        }
+      } else {
+        saveProfileDraft({
+          nickname: nickValidation.trimmed,
+          primaryColor: editColor
+        });
+      }
+      setEditSuccess(true);
+      setTimeout(() => {
+        setIsEditModalOpen(false);
+        setEditSuccess(false);
+        fetchProfileData(pagination.page);
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to update profile settings:', err);
+      setEditError(err.response?.data?.message || err.message || 'Failed to update profile.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const fetchProfileData = async (page = 1) => {
     try {
@@ -151,11 +242,27 @@ export const PlayerProfilePage = () => {
                       <ShieldCheck className="w-3.5 h-3.5 mr-1" />
                       Google Verified Account
                     </span>
-                    {user?.dob && (
-                      <span className="inline-flex items-center text-xs font-mono text-[#4B5563] bg-[#F3F4F6] px-2 py-0.5 rounded-full border border-[#E5E7EB]">
-                        <Calendar className="w-3 h-3 mr-1 text-[#2B68B4]" />
-                        DOB: {formatDate(user.dob)} (Private)
-                      </span>
+                    {user?.dob ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="inline-flex items-center text-xs font-mono text-[#4B5563] bg-[#F3F4F6] hover:bg-[#FFE0ED] hover:text-[#FF2A85] px-2 py-0.5 rounded-full border border-[#E5E7EB] hover:border-[#FF85C0] transition-colors cursor-pointer group"
+                        title="Click to update Date of Birth (Wheel Picker)"
+                      >
+                        <Calendar className="w-3 h-3 mr-1 text-[#2B68B4] group-hover:text-[#FF2A85]" />
+                        <span>DOB: {formatDate(user.dob)} (Private)</span>
+                        <Edit3 className="w-2.5 h-2.5 ml-1 text-zinc-400 group-hover:text-[#FF2A85]" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="inline-flex items-center text-xs font-mono text-[#FF2A85] bg-[#FFF0F6] hover:bg-[#FFE0ED] px-2 py-0.5 rounded-full border border-[#FF85C0] transition-colors cursor-pointer"
+                        title="Add Date of Birth"
+                      >
+                        <Calendar className="w-3 h-3 mr-1 text-[#FF2A85]" />
+                        <span>+ Set DOB (Wheel)</span>
+                      </button>
                     )}
                   </>
                 ) : (
@@ -185,13 +292,14 @@ export const PlayerProfilePage = () => {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <Link
-              to="/profile-setup"
-              className="px-4 py-2.5 rounded-xl font-handwriting font-bold text-sm bg-[#23252A] text-[#F8F4EB] hover:bg-[#3E424B] transition-colors shadow-sketch-sm flex items-center gap-1.5"
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl font-handwriting font-bold text-sm bg-[#23252A] text-[#F8F4EB] hover:bg-[#3E424B] transition-colors shadow-sketch-sm flex items-center gap-1.5 cursor-pointer"
             >
-              <Edit3 className="w-4 h-4" />
-              <span>Edit Profile Settings</span>
-            </Link>
+              <Edit3 className="w-4 h-4 text-[#FF54A5]" />
+              <span>Edit Profile & DOB</span>
+            </button>
           </div>
         </div>
       </section>
@@ -484,6 +592,123 @@ export const PlayerProfilePage = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {/* 5. Edit Profile & DOB Modal with GTA 6 Pink Tone Wheel */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Update Profile & DOB"
+        subtitle="Configure your combat call-sign, combat color, and date of birth"
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          {editSuccess && (
+            <div className="p-3 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-xs font-mono flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+              <span>Profile & DOB updated successfully!</span>
+            </div>
+          )}
+
+          {editError && (
+            <div className="p-3 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] text-xs font-mono flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#DC2626] shrink-0" />
+              <span>{editError}</span>
+            </div>
+          )}
+
+          {/* Nickname Field */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="edit-nickname" className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#2B68B4]" />
+                <span>Game Nickname</span>
+              </label>
+              <span className="text-[11px] font-mono text-[#8E949F]">
+                {editNickname.length}/24
+              </span>
+            </div>
+            <Input
+              id="edit-nickname"
+              value={editNickname}
+              onChange={(e) => {
+                setEditNickname(e.target.value);
+                setEditError(null);
+              }}
+              placeholder="Your combat nickname"
+              maxLength={24}
+            />
+          </div>
+
+          {/* Colour Field */}
+          <div className="pt-2 border-t border-[#D5CFC3]">
+            <span className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#2B68B4]" />
+              <span>Character Colour</span>
+            </span>
+            <ColorFamilySelector
+              selectedColor={editColor}
+              onSelectColor={(id) => {
+                setEditColor(id);
+                setEditError(null);
+              }}
+            />
+          </div>
+
+          {/* DOB with GTA 6 Pink Tone Wheel */}
+          <div className="pt-2 border-t border-[#D5CFC3]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#FF2A85]" />
+                <span>Date of Birth (DOB)</span>
+              </span>
+              <span className="text-[10px] font-mono text-[#059669] flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5" />
+                Strictly Private
+              </span>
+            </div>
+
+            <ScrollableDobPicker
+              value={editDob}
+              onChange={(newDob) => {
+                setEditDob(newDob);
+                setEditError(null);
+              }}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="pt-3 border-t border-[#D5CFC3] flex items-center justify-between gap-3">
+            <Link
+              to="/profile-setup"
+              className="text-xs font-handwriting text-[#2B68B4] hover:underline flex items-center gap-1"
+            >
+              <span>Full setup screen</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={isSaving}
+                className="bg-[#23252A] text-white hover:bg-[#3E424B]"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

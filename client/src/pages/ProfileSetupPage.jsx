@@ -22,6 +22,7 @@ import {
 } from '../components/ui/index.js';
 import { CharacterPreview } from '../components/profile/CharacterPreview.jsx';
 import { ColorFamilySelector } from '../components/profile/ColorFamilySelector.jsx';
+import { ScrollableDobPicker } from '../components/profile/ScrollableDobPicker.jsx';
 import { validateNickname, validateDob } from '../utils/validation.js';
 import { loadProfileDraft, saveProfileDraft } from '../store/gameStore.js';
 import { COLOR_FAMILIES } from '../config/colors.js';
@@ -460,28 +461,19 @@ export const ProfileSetupPage = () => {
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <input
-                      id="player-dob"
-                      type="date"
+                  <div className="mt-2">
+                    <ScrollableDobPicker
                       value={dob}
-                      max={maxDate}
-                      min="1900-01-01"
-                      onChange={(e) => {
-                        setDob(e.target.value);
+                      onChange={(newDob) => {
+                        setDob(newDob);
                         setTouched(prev => ({ ...prev, dob: true }));
                         setServerError(null);
                       }}
-                      className={`w-full px-3.5 py-2.5 rounded-xl border-2 font-mono text-sm bg-white text-[#23252A] focus:outline-none transition-all shadow-sketch-sm ${
-                        touched.dob && !dobVal.isValid
-                          ? 'border-[#CE4242] bg-[#FEF2F2]'
-                          : 'border-[#23252A] focus:border-[#2B68B4]'
-                      }`}
                     />
                   </div>
 
                   {touched.dob && !dobVal.isValid && (
-                    <p className="mt-1.5 text-xs text-[#CE4242] font-mono flex items-center gap-1">
+                    <p className="mt-2 text-xs text-[#CE4242] font-mono flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                       <span>{dobVal.error}</span>
                     </p>
