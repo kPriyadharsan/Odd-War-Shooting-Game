@@ -42,10 +42,12 @@ export const initiateGoogleAuth = async (req, res) => {
       req
     });
 
+    const isSecure = req.secure || req.headers?.['x-forwarded-proto'] === 'https' || config.nodeEnv === 'production' || Boolean(process.env.RENDER);
+
     // Store sealed transaction in temporary HttpOnly cookie (10 minute TTL)
     res.cookie('odd_wars_oauth_tx', transactionToken, {
       httpOnly: true,
-      secure: config.nodeEnv === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: 10 * 60 * 1000
@@ -116,10 +118,12 @@ export const handleGoogleCallback = async (req, res) => {
     // 5. Create persistent session
     const { rawToken } = await sessionService.createSession({ user, req });
 
+    const isSecure = req.secure || req.headers?.['x-forwarded-proto'] === 'https' || config.nodeEnv === 'production' || Boolean(process.env.RENDER);
+
     // 6. Set secure HttpOnly session cookie (7 days)
     res.cookie('odd_wars_session', rawToken, {
       httpOnly: true,
-      secure: config.nodeEnv === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
@@ -128,7 +132,7 @@ export const handleGoogleCallback = async (req, res) => {
     // Clear temporary transaction cookie
     res.clearCookie('odd_wars_oauth_tx', {
       httpOnly: true,
-      secure: config.nodeEnv === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/'
     });
@@ -137,11 +141,11 @@ export const handleGoogleCallback = async (req, res) => {
 
     // Intelligent destination routing:
     // First-time sign-in or incomplete profile -> redirect to /profile-setup (identity creation form)
-    // Existing user with completed profile -> redirect to /lobby (main game dashboard)
-    let destination = '/lobby';
+    // Existing user with completed profile -> redirect to /profile or intended returnTo
+    let destination = '/profile';
     if (isNewUser || !user.isProfileComplete) {
       destination = '/profile-setup';
-    } else if (txData.returnTo && txData.returnTo.startsWith('/') && !['/login', '/profile', '/'].includes(txData.returnTo)) {
+    } else if (txData.returnTo && txData.returnTo.startsWith('/') && !['/login', '/'].includes(txData.returnTo)) {
       destination = txData.returnTo;
     }
 

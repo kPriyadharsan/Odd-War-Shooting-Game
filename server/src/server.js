@@ -17,6 +17,9 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 const app = express();
 const server = http.createServer(app);
 
+// Trust reverse proxies (Vercel, Render load balancer, Cloudflare)
+app.set('trust proxy', 1);
+
 // Security & Parsing Middleware
 app.use(helmet({
   crossOriginResourcePolicy: false
@@ -71,7 +74,7 @@ app.get(['/', '/login', '/profile', '/lobby', '/leaderboard'], (req, res, next) 
   if (req.accepts('html')) {
     const targetOrigin = (config.clientUrl && !config.clientUrl.includes('localhost'))
       ? config.clientUrl.replace(/\/+$/, '')
-      : 'https://odd-war.vercel.app';
+      : 'https://odd-wars.vercel.app';
     return res.redirect(`${targetOrigin}${req.originalUrl}`);
   }
   next();

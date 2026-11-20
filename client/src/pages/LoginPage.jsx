@@ -18,7 +18,7 @@ export const LoginPage = () => {
       if (!user?.isProfileComplete) {
         navigate('/profile-setup', { replace: true });
       } else {
-        navigate('/lobby', { replace: true });
+        navigate('/profile', { replace: true });
       }
     }
   }, [isAuthenticated, user, navigate]);
@@ -98,7 +98,7 @@ export const LoginPage = () => {
           {/* Sign In Button Action */}
           <div className="space-y-3 pt-2">
             <GoogleSignInButton
-              returnTo="/lobby"
+              returnTo="/profile"
               text="Continue with Google"
               size="lg"
               className="w-full shadow-sketch-sm"

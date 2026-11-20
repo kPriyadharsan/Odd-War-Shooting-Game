@@ -69,15 +69,19 @@ export const authApi = {
   },
 
   /**
-   * Constructs the server-side Google OAuth initiation URL with guest linking parameters.
+   * Constructs the server-side Google OAuth initiation URL with guest linking parameters
+   * and client origin to guarantee accurate production redirect URI resolution.
    */
-  getGoogleLoginUrl: (guestPlayerId = null, returnTo = '/lobby') => {
+  getGoogleLoginUrl: (guestPlayerId = null, returnTo = '/profile') => {
     const params = new URLSearchParams();
     if (guestPlayerId) {
       params.set('guestPlayerId', guestPlayerId);
     }
     if (returnTo) {
       params.set('returnTo', returnTo);
+    }
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      params.set('origin', window.location.origin);
     }
     const queryString = params.toString();
     return `${API_BASE}/auth/google${queryString ? `?${queryString}` : ''}`;

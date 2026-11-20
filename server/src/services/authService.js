@@ -19,39 +19,56 @@ const signPayload = (payloadString) => {
 
 /**
  * Dynamically resolves the frontend origin where the client application is hosted.
- * Accurately detects Vercel edge proxy headers, origin, referer, or falls back to
- * configured client URL or the canonical production domain.
+ * Accurately detects explicit client origin param, Vercel edge proxy headers,
+ * origin/referer, configured client URL, or the canonical production domain.
  */
 export const resolveFrontendOrigin = (req) => {
   if (req) {
-    // 1. Check referer / origin headers (highest accuracy for player's actual browser location)
-    const origin = req.get ? req.get('origin') : req.headers?.['origin'];
-    if (origin && typeof origin === 'string' && !origin.includes('onrender.com')) {
-      return origin.replace(/\/+$/, '');
+    // 1. Check explicit client-sent origin query parameter (e.g. ?origin=https://odd-wars.vercel.app)
+    const queryOrigin = req.query?.origin;
+    if (queryOrigin && typeof queryOrigin === 'string') {
+      const cleanQueryOrigin = queryOrigin.trim().replace(/\/+$/, '');
+      if (
+        cleanQueryOrigin.includes('odd-wars.vercel.app') ||
+        cleanQueryOrigin.includes('odd-war.vercel.app') ||
+        cleanQueryOrigin.includes('localhost') ||
+        cleanQueryOrigin.includes('127.0.0.1')
+      ) {
+        return cleanQueryOrigin;
+      }
     }
 
+    // 2. Check Referer header (e.g. https://odd-wars.vercel.app/login)
     const referer = req.get ? req.get('referer') : req.headers?.['referer'];
     if (referer && typeof referer === 'string') {
       try {
         const parsed = new URL(referer);
-        if (!parsed.hostname.includes('onrender.com')) {
-          return `${parsed.protocol}//${parsed.host}`;
+        if (parsed.origin && !parsed.origin.includes('onrender.com')) {
+          return parsed.origin;
         }
       } catch {
         // ignore malformed referer
       }
     }
 
-    // 2. Check proxy forwarding headers (e.g. Vercel edge reverse proxy)
+    // 3. Check Origin header
+    const origin = req.get ? req.get('origin') : req.headers?.['origin'];
+    if (origin && typeof origin === 'string' && !origin.includes('onrender.com')) {
+      return origin.replace(/\/+$/, '');
+    }
+
+    // 4. Check proxy forwarding headers (e.g. Vercel edge reverse proxy)
     const rawForwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
     if (rawForwardedHost) {
       const forwardedHost = rawForwardedHost.split(',')[0].trim();
-      const rawForwardedProto = req.get ? req.get('x-forwarded-proto') : req.headers?.['x-forwarded-proto'];
-      const proto = (rawForwardedProto ? rawForwardedProto.split(',')[0].trim() : null) || 'https';
-      return `${proto}://${forwardedHost}`;
+      if (!forwardedHost.includes('onrender.com')) {
+        const rawForwardedProto = req.get ? req.get('x-forwarded-proto') : req.headers?.['x-forwarded-proto'];
+        const proto = (rawForwardedProto ? rawForwardedProto.split(',')[0].trim() : null) || 'https';
+        return `${proto}://${forwardedHost}`;
+      }
     }
 
-    // 3. Direct host header (if not Render backend domain)
+    // 5. Direct host header (if not Render backend domain)
     const host = req.get ? req.get('host') : req.headers?.['host'];
     if (host && !host.includes('onrender.com') && !host.includes('localhost')) {
       const proto = req.protocol || 'https';
@@ -59,16 +76,19 @@ export const resolveFrontendOrigin = (req) => {
     }
   }
 
-  // 4. Configured client URL from environment
+  // 6. Configured client URL from environment (if set and not localhost)
   if (config.clientUrl && !config.clientUrl.includes('localhost')) {
     return config.clientUrl.replace(/\/+$/, '');
   }
 
-  // 5. In production or on Render, canonical frontend domain is odd-war.vercel.app
-  if (config.nodeEnv === 'production' || process.env.RENDER) {
-    return 'https://odd-war.vercel.app';
+  // 7. Render cloud hosting detection: If hosted on Render, the frontend is ALWAYS production Vercel
+  const host = req ? (req.get ? req.get('host') : req.headers?.['host']) : null;
+  const isHostedOnRender = (host && host.includes('onrender.com')) || Boolean(process.env.RENDER) || config.nodeEnv === 'production';
+  if (isHostedOnRender) {
+    return 'https://odd-wars.vercel.app';
   }
 
+  // 8. Localhost fallback only for local machine development
   return 'http://localhost:5173';
 };
 

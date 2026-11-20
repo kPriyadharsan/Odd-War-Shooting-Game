@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export const GoogleSignInButton = ({
-  returnTo = '/lobby',
+  returnTo = '/profile',
   text = 'Sign in with Google',
   className = '',
   size = 'md' // 'sm' | 'md' | 'lg'
