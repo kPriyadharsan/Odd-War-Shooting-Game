@@ -37,7 +37,8 @@ export const initiateGoogleAuth = async (req, res) => {
 
     const { authorizationUrl, transactionToken } = authService.generateOAuthTransaction({
       guestPlayerId,
-      returnTo
+      returnTo,
+      req
     });
 
     // Store sealed transaction in temporary HttpOnly cookie (10 minute TTL)
@@ -98,7 +99,8 @@ export const handleGoogleCallback = async (req, res) => {
     const googleProfile = await authService.exchangeCodeAndVerifyIdToken({
       code,
       codeVerifier: txData.codeVerifier,
-      expectedNonce: txData.nonce
+      expectedNonce: txData.nonce,
+      redirectUri: txData.callbackUrl || authService.resolveCallbackUrl(req)
     });
 
     // 4. Find or create persistent User (safe guest linking)

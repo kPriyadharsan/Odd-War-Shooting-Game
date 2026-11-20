@@ -45,9 +45,24 @@ app.use('/health', healthRoutes);
 
 // Mount API routes under /api and root / for universal compatibility
 app.use('/api', apiRoutes);
+app.use('/auth', (req, res, next) => {
+  req.url = `/auth${req.url}`;
+  return apiRoutes(req, res, next);
+});
 app.use('/rooms', (req, res, next) => {
-  // Direct fallback if called without /api prefix
   req.url = `/rooms${req.url}`;
+  return apiRoutes(req, res, next);
+});
+app.use('/matches', (req, res, next) => {
+  req.url = `/matches${req.url}`;
+  return apiRoutes(req, res, next);
+});
+app.use('/stats', (req, res, next) => {
+  req.url = `/stats${req.url}`;
+  return apiRoutes(req, res, next);
+});
+app.use('/leaderboard', (req, res, next) => {
+  req.url = `/leaderboard${req.url}`;
   return apiRoutes(req, res, next);
 });
 

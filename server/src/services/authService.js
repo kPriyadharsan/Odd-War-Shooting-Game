@@ -17,19 +17,54 @@ const signPayload = (payloadString) => {
   return crypto.createHmac('sha256', config.jwtSecret).update(payloadString).digest('base64url');
 };
 
+/**
+ * Dynamically resolves the OAuth callback URL based on incoming request headers
+ * (preserving forwarded host from Vercel / reverse proxies) or explicit env variable.
+ */
+export const resolveCallbackUrl = (req) => {
+  if (process.env.GOOGLE_CALLBACK_URL && process.env.GOOGLE_CALLBACK_URL.trim().length > 0) {
+    return process.env.GOOGLE_CALLBACK_URL.trim();
+  }
+
+  if (req) {
+    const forwardedProto = req.get ? req.get('x-forwarded-proto') : req.headers?.['x-forwarded-proto'];
+    const forwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
+
+    if (forwardedHost) {
+      const proto = forwardedProto || 'https';
+      return `${proto}://${forwardedHost}/api/auth/google/callback`;
+    }
+
+    const host = req.get ? req.get('host') : req.headers?.['host'];
+    if (host && !host.includes('onrender.com')) {
+      const proto = req.protocol || 'http';
+      return `${proto}://${host}/api/auth/google/callback`;
+    }
+
+    if (config.clientUrl && !config.clientUrl.includes('localhost')) {
+      return `${config.clientUrl.replace(/\/+$/, '')}/api/auth/google/callback`;
+    }
+  }
+
+  return config.googleCallbackUrl || 'http://localhost:5173/api/auth/google/callback';
+};
+
 export const authService = {
+  resolveCallbackUrl,
+
   /**
    * Generates a Google OAuth authorization URL with cryptographically secure
    * state, nonce, and PKCE code challenge.
    * Signs the OAuth transaction into a tamper-proof HttpOnly token.
    */
-  generateOAuthTransaction: ({ guestPlayerId = null, returnTo = '/' }) => {
+  generateOAuthTransaction: ({ guestPlayerId = null, returnTo = '/', req = null }) => {
     if (!config.isGoogleAuthConfigured) {
       const err = new Error('Google OAuth credentials are not configured on the server.');
       err.statusCode = 501;
       throw err;
     }
 
+    const callbackUrl = resolveCallbackUrl(req);
     const state = crypto.randomBytes(32).toString('hex');
     const nonce = crypto.randomBytes(32).toString('hex');
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
@@ -39,6 +74,7 @@ export const authService = {
       state,
       nonce,
       codeVerifier,
+      callbackUrl,
       guestPlayerId: typeof guestPlayerId === 'string' && guestPlayerId.startsWith('p_') ? guestPlayerId : null,
       returnTo: typeof returnTo === 'string' && returnTo.startsWith('/') ? returnTo : '/',
       createdAt: Date.now()
@@ -51,7 +87,7 @@ export const authService = {
     const client = new OAuth2Client({
       clientId: config.googleClientId,
       clientSecret: config.googleClientSecret,
-      redirectUri: config.googleCallbackUrl
+      redirectUri: callbackUrl
     });
 
     const authorizationUrl = client.generateAuthUrl({
@@ -68,7 +104,8 @@ export const authService = {
       authorizationUrl,
       transactionToken,
       state,
-      nonce
+      nonce,
+      callbackUrl
     };
   },
 
@@ -129,7 +166,7 @@ export const authService = {
    * Exchanges authorization code for tokens and verifies Google ID token claims.
    * Validates audience, issuer, expiry, signature, nonce, and email_verified.
    */
-  exchangeCodeAndVerifyIdToken: async ({ code, codeVerifier, expectedNonce }) => {
+  exchangeCodeAndVerifyIdToken: async ({ code, codeVerifier, expectedNonce, redirectUri = null }) => {
     if (!code || typeof code !== 'string') {
       const err = new Error('Missing authorization code from Google callback.');
       err.statusCode = 400;
@@ -139,7 +176,7 @@ export const authService = {
     const client = new OAuth2Client({
       clientId: config.googleClientId,
       clientSecret: config.googleClientSecret,
-      redirectUri: config.googleCallbackUrl
+      redirectUri: redirectUri || config.googleCallbackUrl
     });
 
     // Code exchange on backend only
