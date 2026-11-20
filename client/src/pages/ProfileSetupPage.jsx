@@ -471,10 +471,9 @@ export const ProfileSetupPage = () => {
           flex items-start gap-2.5
           p-3 rounded-xl border
           text-xs sm:text-sm
-          ${
-            success
-              ? 'bg-[#F0F7F3] border-[#B8D9C4] text-[#246B43]'
-              : 'bg-[#FDF2F2] border-[#E8BDBD] text-[#B52E2E]'
+          ${success
+            ? 'bg-[#F0F7F3] border-[#B8D9C4] text-[#246B43]'
+            : 'bg-[#FDF2F2] border-[#E8BDBD] text-[#B52E2E]'
           }
         `}
       >
@@ -511,18 +510,22 @@ export const ProfileSetupPage = () => {
     <NotebookBackground
       showMargin={false}
       className="
-        min-h-[100dvh]
-        overflow-x-hidden
+        h-[100dvh] max-h-[100dvh]
+        overflow-hidden
         flex flex-col
-        py-3 sm:py-6 lg:py-10
+        py-0 sm:py-6 lg:py-10
+        lg:min-h-[100dvh] lg:h-auto lg:max-h-none
+        lg:overflow-x-hidden
       "
     >
 
       <div
         className="
           w-full max-w-6xl mx-auto
-          px-3 sm:px-6 lg:px-8
+          h-full min-h-0
+          px-2.5 sm:px-6 lg:px-8
           flex-1 flex flex-col
+          lg:h-auto lg:min-h-full
         "
         style={{ fontFamily: FONT_STACK }}
       >
@@ -533,10 +536,11 @@ export const ProfileSetupPage = () => {
 
         <header
           className="
+            relative
             flex items-center justify-between gap-3
-            pb-3 sm:pb-5 mb-4 sm:mb-6
-            border-b border-[#D5CFC3]/80
-            shrink-0
+            h-0 min-h-0 p-0 m-0
+            shrink-0 overflow-visible
+            lg:h-auto lg:min-h-0 lg:pb-5
           "
         >
           <div className="shrink-0">
@@ -571,7 +575,7 @@ export const ProfileSetupPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="
               flex items-center gap-3
-              p-3 mb-4
+              p-2 sm:p-3 mb-2 sm:mb-4
               rounded-xl
               bg-[#FAF6EC]
               border border-[#DED7C9]
@@ -660,18 +664,21 @@ export const ProfileSetupPage = () => {
 
         <div className="
           grid grid-cols-1 lg:grid-cols-12
-          gap-5 lg:gap-8
+          gap-0 lg:gap-8
           items-start
-          flex-1
+          flex-1 min-h-0
+          lg:gap-8
         ">
 
           {/* LEFT: PROFILE FORM */}
 
-          <div className="lg:col-span-7 min-w-0">
+          <div className="lg:col-span-7 min-w-0 min-h-0 h-full">
 
             <form
               onSubmit={handleSubmit}
               className="
+                h-full min-h-0
+                flex flex-col
                 rounded-2xl
                 border border-[#DED7C9]
                 bg-[#FFFEFA]
@@ -680,7 +687,11 @@ export const ProfileSetupPage = () => {
               "
             >
 
-              <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-7">
+              <div className="
+                flex-1 min-h-0 overflow-hidden
+                p-2.5 sm:p-5 lg:p-6
+                space-y-3 sm:space-y-7
+              ">
 
                 {/* ------------------------------------ */}
                 {/* 01. NICKNAME */}
@@ -689,7 +700,7 @@ export const ProfileSetupPage = () => {
                 <section>
                   <div className="
                     flex items-center justify-between
-                    gap-2 mb-3
+                    gap-2 mb-2 sm:mb-3
                   ">
                     <div>
                       <div className="
@@ -741,7 +752,7 @@ export const ProfileSetupPage = () => {
                     }}
                     placeholder="Enter your player nickname"
                     maxLength={24}
-                    autoFocus={!isEditingExisting}
+                    autoFocus={false}
                     error={
                       touched.nickname && !nicknameVal.isValid
                         ? nicknameVal.error
@@ -766,12 +777,11 @@ export const ProfileSetupPage = () => {
                         <div className={`
                           flex items-center gap-1
                           text-[10px] font-medium
-                          ${
-                            nicknameStatus.type === 'success'
-                              ? 'text-[#278052]'
-                              : nicknameStatus.type === 'error'
-                                ? 'text-[#CE4242]'
-                                : 'text-[#858078]'
+                          ${nicknameStatus.type === 'success'
+                            ? 'text-[#278052]'
+                            : nicknameStatus.type === 'error'
+                              ? 'text-[#CE4242]'
+                              : 'text-[#858078]'
                           }
                         `}>
                           {nicknameStatus.type === 'loading' ? (
@@ -823,7 +833,7 @@ export const ProfileSetupPage = () => {
                 {/* ------------------------------------ */}
 
                 <section>
-                  <div className="mb-3">
+                  <div className="mb-2 sm:mb-3">
                     <div className="
                       flex items-center gap-2
                       text-sm font-bold
@@ -904,7 +914,7 @@ export const ProfileSetupPage = () => {
                     w-full rounded-xl
                     bg-[#FAF9F5]
                     border border-[#EEEAE1]
-                    py-2
+                    py-0 sm:py-2
                   ">
                     <ScrollableDobPicker
                       value={dob}
@@ -942,8 +952,8 @@ export const ProfileSetupPage = () => {
               {/* ====================================== */}
 
               <div className="
-                sticky bottom-0 z-20
-                p-3 sm:p-4
+                shrink-0 z-20
+                p-2.5 sm:p-4
                 border-t border-[#EAE5DA]
                 bg-[#FFFEFA]/95
                 backdrop-blur-md
@@ -1003,19 +1013,6 @@ export const ProfileSetupPage = () => {
               </div>
 
             </form>
-
-
-            {/* Mobile helper text */}
-
-            <p className="
-              lg:hidden text-center
-              text-[10px] text-[#969087]
-              mt-3 mb-3
-            ">
-              <ShieldCheck className="w-3 h-3 inline mr-1" />
-              Your player identity will be saved securely.
-            </p>
-
           </div>
 
 

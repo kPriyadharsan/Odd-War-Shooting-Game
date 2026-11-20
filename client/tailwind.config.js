@@ -49,8 +49,18 @@ export default {
         'sketch': '2px 2px 0px #D5CFC3',
         'sketch-sm': '1px 1px 0px #D5CFC3',
         'sketch-dark': '2px 2px 0px #23252A',
+        'sketch-md': '3px 3px 0px #23252A',
         'sketch-pressed': '0px 0px 0px #23252A',
-      }
+      },
+      keyframes: {
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        slideDown: 'slideDown 0.18s ease-out forwards',
+      },
     },
   },
   plugins: [],
