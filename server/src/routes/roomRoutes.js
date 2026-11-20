@@ -18,8 +18,12 @@ import {
   updateRoomSettings,
   drawRoomBookPage
 } from '../controllers/roomController.js';
+import { optionalAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
+
+// Attach optional authenticated player context
+router.use(optionalAuth);
 
 // Public rooms
 router.post('/public', createPublicRoom);

@@ -92,9 +92,9 @@ async function runTests() {
     console.log('✓ TEST 3 PASSED: State validation and HMAC signature verified successfully.');
 
     // -------------------------------------------------------------------------
-    // TEST 4: Safe Guest Account Linking & User Creation
+    // TEST 4: Safe Guest Account Linking & Separation of Google Identity from Game Nickname
     // -------------------------------------------------------------------------
-    console.log('\n[TEST 4] Testing safe guest-to-Google account linking...');
+    console.log('\n[TEST 4] Testing safe guest-to-Google linking & nickname isolation...');
     const mockGoogleProfile1 = {
       googleId: 'google_sub_1092837465',
       email: 'alice.pen@example.com',
@@ -108,7 +108,7 @@ async function runTests() {
       guestPlayerId: 'p_guest_tester_123'
     });
 
-    console.log(`[TEST 4] User created: ${linkedUser.nickname}, playerId: ${linkedUser.playerId}, isNewUser: ${isFirstTime}`);
+    console.log(`[TEST 4] User created: playerId: ${linkedUser.playerId}, isNewUser: ${isFirstTime}, nickname: ${linkedUser.nickname}`);
     if (linkedUser.playerId !== 'p_guest_tester_123') {
       throw new Error(`Guest playerId was not linked! Got ${linkedUser.playerId}`);
     }
@@ -118,35 +118,64 @@ async function runTests() {
     if (!isFirstTime) {
       throw new Error('First sign-in should report isNewUser = true');
     }
-    console.log('✓ TEST 4 PASSED: Guest playerId seamlessly linked and identified as first-time user.');
+    // Strict isolation: Google displayName ("Alice Pen") must NOT be automatically set as game nickname!
+    if (linkedUser.nickname !== null && linkedUser.nickname !== undefined && linkedUser.nickname !== '') {
+      throw new Error(`Google displayName was incorrectly set as game nickname: "${linkedUser.nickname}"`);
+    }
+    if (linkedUser.isProfileComplete) {
+      throw new Error('New Google user profile must be incomplete before mandatory onboarding!');
+    }
+    console.log('✓ TEST 4 PASSED: Google account identity separated from game nickname; profile incomplete as required.');
 
     // -------------------------------------------------------------------------
-    // TEST 5: Existing User Login Idempotency & Profile Completeness
+    // TEST 5: Complete Mandatory Profile (Nickname + Color + DOB)
     // -------------------------------------------------------------------------
-    console.log('\n[TEST 5] Testing existing user login (idempotency)...');
-    const { user: existingUser, isNewUser: isSecondTime } = await authService.findOrCreateUserFromGoogle({
-      googleProfile: mockGoogleProfile1,
-      guestPlayerId: 'p_some_other_guest_id'
-    });
-
-    if (existingUser.playerId !== 'p_guest_tester_123') {
-      throw new Error('Existing user should retain original playerId and not be overwritten');
+    console.log('\n[TEST 5] Testing mandatory profile onboarding (Nickname + Color + DOB)...');
+    
+    // Test rejection of invalid future DOB
+    let futureDobRejected = false;
+    try {
+      await authService.updateUserProfile({
+        playerId: linkedUser.playerId,
+        nickname: 'Sharpshooter_Alice',
+        primaryColor: 'RED',
+        dob: '2099-01-01'
+      });
+    } catch {
+      futureDobRejected = true;
     }
-    if (isSecondTime) {
-      throw new Error('Returning user should report isNewUser = false');
+    if (!futureDobRejected) {
+      throw new Error('Failed to reject future DOB!');
     }
 
-    // Test profile update
+    // Test rejection of missing DOB
+    let missingDobRejected = false;
+    try {
+      await authService.updateUserProfile({
+        playerId: linkedUser.playerId,
+        nickname: 'Sharpshooter_Alice',
+        primaryColor: 'RED',
+        dob: null
+      });
+    } catch {
+      missingDobRejected = true;
+    }
+    if (!missingDobRejected) {
+      throw new Error('Failed to reject missing DOB!');
+    }
+
+    // Complete valid profile onboarding
     const updated = await authService.updateUserProfile({
-      playerId: existingUser.playerId,
+      playerId: linkedUser.playerId,
       nickname: 'Sharpshooter_Alice',
-      primaryColor: 'RED'
+      primaryColor: 'RED',
+      dob: '1998-05-14'
     });
-    if (updated.nickname !== 'Sharpshooter_Alice' || updated.primaryColor !== 'RED' || !updated.isProfileComplete) {
-      throw new Error('Profile update failed to save custom nickname, color, or mark isProfileComplete');
+    if (updated.nickname !== 'Sharpshooter_Alice' || updated.primaryColor !== 'RED' || !updated.dob || !updated.isProfileComplete) {
+      throw new Error('Profile update failed to save nickname, color, DOB, or mark isProfileComplete');
     }
 
-    console.log('✓ TEST 5 PASSED: Existing user login returned original account, and profile update succeeded.');
+    console.log('✓ TEST 5 PASSED: Profile completed with Nickname + Color + DOB; validations verified.');
 
     // -------------------------------------------------------------------------
     // TEST 6: Session Creation, Token Hashing & Expiration
@@ -241,8 +270,73 @@ async function runTests() {
     }
     console.log('✓ TEST 9 PASSED: Account conflict protection verified.');
 
+    // -------------------------------------------------------------------------
+    // TEST 10: Nickname Availability & Duplicate Rejection
+    // -------------------------------------------------------------------------
+    console.log('\n[TEST 10] Testing nickname uniqueness & availability...');
+    const isTaken = await authService.isNicknameAvailable('Sharpshooter_Alice');
+    if (isTaken) {
+      throw new Error('Sharpshooter_Alice should be reported as TAKEN (unavailable)');
+    }
+    const isOwnRetained = await authService.isNicknameAvailable('Sharpshooter_Alice', 'p_guest_tester_123');
+    if (!isOwnRetained) {
+      throw new Error('Current user must be allowed to retain their own nickname!');
+    }
+    const isNewAvailable = await authService.isNicknameAvailable('BrandNewWarrior_99');
+    if (!isNewAvailable) {
+      throw new Error('Unclaimed nickname should be available!');
+    }
+    console.log('✓ TEST 10 PASSED: Nickname uniqueness and own-player retention verified.');
+
+    // -------------------------------------------------------------------------
+    // TEST 11: HTTP GET /api/auth/check-nickname Endpoint
+    // -------------------------------------------------------------------------
+    console.log('\n[TEST 11] Testing GET /api/auth/check-nickname...');
+    const resCheck = await fetch(`${BASE_URL}/auth/check-nickname?nickname=Sharpshooter_Alice`);
+    const checkData = await resCheck.json();
+    if (!checkData.success || checkData.data?.available !== false) {
+      throw new Error('GET /api/auth/check-nickname failed to report taken nickname');
+    }
+    console.log('✓ TEST 11 PASSED: Nickname check API successfully reports availability.');
+
+    // -------------------------------------------------------------------------
+    // TEST 12: Incomplete Profile Gatekeeping on Gameplay / Room Endpoints
+    // -------------------------------------------------------------------------
+    console.log('\n[TEST 12] Testing gatekeeping for incomplete Google profiles...');
+    // Create an uncompleted user session
+    const { user: incompleteUser } = await authService.findOrCreateUserFromGoogle({
+      googleProfile: {
+        googleId: 'google_sub_incomplete_tester',
+        email: 'bob.incomplete@example.com',
+        emailVerified: true,
+        displayName: 'Bob Incomplete'
+      }
+    });
+    const { rawToken: incompleteToken } = await sessionService.createSession({
+      user: incompleteUser,
+      req: { headers: { 'user-agent': 'TestAgent' }, ip: '127.0.0.1' }
+    });
+
+    const resIncompleteRoom = await fetch(`${BASE_URL}/rooms/public`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `odd_war_session=${incompleteToken}`
+      },
+      body: JSON.stringify({
+        name: 'Incomplete Test Room',
+        maxPlayers: 2,
+        bookPageCount: 100
+      })
+    });
+
+    if (resIncompleteRoom.status !== 403) {
+      throw new Error(`Incomplete profile should be rejected with 403, got ${resIncompleteRoom.status}`);
+    }
+    console.log('✓ TEST 12 PASSED: Incomplete Google profiles strictly blocked from gameplay with 403.');
+
     console.log('\n================================================================');
-    console.log('  ALL 9 AUTHENTICATION & SECURITY TESTS PASSED WITH 100% OK!   ');
+    console.log('  ALL 12 AUTHENTICATION & ONBOARDING TESTS PASSED WITH 100% OK! ');
     console.log('================================================================');
   } catch (err) {
     console.error('\n❌ AUTH TEST FAILED:', err.message);

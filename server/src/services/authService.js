@@ -297,6 +297,42 @@ export const authService = {
    *   we assign user.playerId = guestPlayerId so match history & room state are preserved!
    * - Idempotent and safe against claiming existing accounts.
    */
+  /**
+   * Checks if a desired nickname is available (unique across all registered users).
+   * Allows the current player to retain their own nickname without collision.
+   */
+  isNicknameAvailable: async (nickname, excludePlayerId = null) => {
+    if (!nickname || typeof nickname !== 'string') return false;
+    const cleanNickname = nickname.trim();
+    if (cleanNickname.length < 2 || cleanNickname.length > 24) return false;
+
+    const isDbConnected = getDatabaseStatus().connected;
+    if (isDbConnected) {
+      const query = {
+        nickname: { $regex: new RegExp(`^${cleanNickname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      };
+      if (excludePlayerId) {
+        query.playerId = { $ne: excludePlayerId };
+      }
+      const existing = await User.findOne(query);
+      return !existing;
+    } else {
+      for (const u of inMemoryUsers.values()) {
+        if (excludePlayerId && u.playerId === excludePlayerId) continue;
+        if (u.nickname && u.nickname.toLowerCase() === cleanNickname.toLowerCase()) {
+          return false;
+        }
+      }
+      return true;
+    }
+  },
+
+  /**
+   * Resolves or provisions a persistent User record from verified Google OpenID profile.
+   * Completely separates Google account identity (displayName, email, avatarUrl) from
+   * in-game warrior identity (nickname, color, dob).
+   * Google displayName is NEVER automatically set as the game nickname!
+   */
   findOrCreateUserFromGoogle: async ({ googleProfile, guestPlayerId = null }) => {
     const { googleId, email, emailVerified, displayName, avatarUrl } = googleProfile;
     const isDbConnected = getDatabaseStatus().connected;
@@ -307,6 +343,14 @@ export const authService = {
       if (existingUser) {
         if (!existingUser.avatarUrl && avatarUrl) {
           existingUser.avatarUrl = avatarUrl;
+        }
+        if (!existingUser.displayName && displayName) {
+          existingUser.displayName = displayName;
+        }
+        // Evaluate profile completeness based on all three required fields
+        const isComplete = Boolean(existingUser.nickname && existingUser.primaryColor && existingUser.dob);
+        if (existingUser.isProfileComplete !== isComplete) {
+          existingUser.isProfileComplete = isComplete;
           await existingUser.save();
         }
         return { user: existingUser, isNewUser: false };
@@ -317,10 +361,17 @@ export const authService = {
       if (existingUser) {
         existingUser.googleId = googleId;
         existingUser.emailVerified = true;
+        if (!existingUser.displayName && displayName) {
+          existingUser.displayName = displayName;
+        }
         if (!existingUser.avatarUrl && avatarUrl) {
           existingUser.avatarUrl = avatarUrl;
         }
-        await existingUser.save();
+        const isComplete = Boolean(existingUser.nickname && existingUser.primaryColor && existingUser.dob);
+        if (existingUser.isProfileComplete !== isComplete) {
+          existingUser.isProfileComplete = isComplete;
+          await existingUser.save();
+        }
         logger.info(`[AuthService] Linked Google ID to existing user account ${email}`);
         return { user: existingUser, isNewUser: false };
       }
@@ -339,10 +390,8 @@ export const authService = {
         assignedPlayerId = `p_${crypto.randomBytes(4).toString('hex')}_${Date.now().toString(36)}`;
       }
 
-      const nickname = displayName
-        ? displayName.split(' ')[0].substring(0, 20)
-        : `Warrior_${assignedPlayerId.substring(2, 6)}`;
-
+      // CRITICAL: Google account display name must NEVER be used as the game nickname!
+      // The player MUST explicitly choose their own game nickname on the onboarding screen.
       const newUser = await User.create({
         playerId: assignedPlayerId,
         googleId,
@@ -350,29 +399,21 @@ export const authService = {
         emailVerified,
         displayName,
         avatarUrl,
-        nickname,
+        nickname: null,
         primaryColor: 'BLUE',
         assignedShade: { name: 'Blue Ink', hex: '#2B68B4' },
+        dob: null,
         isProfileComplete: false
       });
 
-      // Ensure PlayerStats record exists for this playerId
-      const existingStats = await PlayerStats.findOne({ playerId: assignedPlayerId });
-      if (!existingStats) {
-        await PlayerStats.create({
-          playerId: assignedPlayerId,
-          nickname,
-          primaryColor: 'BLUE'
-        });
-      }
-
-      logger.info(`[AuthService] Created new user ${newUser.nickname} (playerId: ${assignedPlayerId}) from Google account`);
+      logger.info(`[AuthService] Created new user (playerId: ${assignedPlayerId}) from Google account ${email}`);
       return { user: newUser, isNewUser: true };
     } else {
       // In-memory fallback for dev / test mode
       // Check existing by googleId
       for (const u of inMemoryUsers.values()) {
         if (u.googleId === googleId) {
+          u.isProfileComplete = Boolean(u.nickname && u.primaryColor && u.dob);
           return { user: u, isNewUser: false };
         }
       }
@@ -381,6 +422,7 @@ export const authService = {
         if (u.email === email) {
           u.googleId = googleId;
           u.emailVerified = true;
+          u.isProfileComplete = Boolean(u.nickname && u.primaryColor && u.dob);
           return { user: u, isNewUser: false };
         }
       }
@@ -390,10 +432,6 @@ export const authService = {
         ? guestPlayerId
         : `p_${crypto.randomBytes(4).toString('hex')}_${Date.now().toString(36)}`;
 
-      const nickname = displayName
-        ? displayName.split(' ')[0].substring(0, 20)
-        : `Warrior_${assignedPlayerId.substring(2, 6)}`;
-
       const newUser = {
         _id: `user_${Date.now()}`,
         playerId: assignedPlayerId,
@@ -402,9 +440,10 @@ export const authService = {
         emailVerified,
         displayName,
         avatarUrl,
-        nickname,
+        nickname: null,
         primaryColor: 'BLUE',
         assignedShade: { name: 'Blue Ink', hex: '#2B68B4' },
+        dob: null,
         isProfileComplete: false,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -412,32 +451,16 @@ export const authService = {
 
       inMemoryUsers.set(assignedPlayerId, newUser);
 
-      if (!inMemoryPlayerStats.has(assignedPlayerId)) {
-        inMemoryPlayerStats.set(assignedPlayerId, {
-          playerId: assignedPlayerId,
-          nickname,
-          primaryColor: 'BLUE',
-          matchesPlayed: 0,
-          wins: 0,
-          losses: 0,
-          winPercentage: 0,
-          currentStreak: 0,
-          bestStreak: 0,
-          opponentsEliminated: 0,
-          lastMatchAt: null
-        });
-      }
-
-      logger.info(`[AuthService] In-memory user ${nickname} created (playerId: ${assignedPlayerId})`);
+      logger.info(`[AuthService] In-memory user created (playerId: ${assignedPlayerId})`);
       return { user: newUser, isNewUser: true };
     }
   },
 
   /**
-   * Updates player's warrior profile (call-sign nickname and primary pencil color/shade)
-   * and marks their identity setup as complete.
+   * Updates player's warrior profile (call-sign nickname, primary pencil color/shade, and DOB)
+   * and marks their identity setup as complete ONLY when all 3 fields are valid.
    */
-  updateUserProfile: async ({ playerId, nickname, primaryColor }) => {
+  updateUserProfile: async ({ playerId, nickname, primaryColor, dob }) => {
     const colorMap = {
       RED: { name: 'Red Ink', hex: '#CE4242' },
       GREEN: { name: 'Chalk Green', hex: '#2E8557' },
@@ -446,9 +469,48 @@ export const authService = {
       BLACK: { name: 'Graphite Pencil', hex: '#2B2D31' }
     };
 
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 24) {
+      const err = new Error('Game Nickname is required and must be between 2 and 24 characters.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const cleanNickname = nickname.trim();
+
+    // Check nickname availability
+    const isAvailable = await authService.isNicknameAvailable(cleanNickname, playerId);
+    if (!isAvailable) {
+      const err = new Error(`Nickname "${cleanNickname}" is already taken. Please choose another.`);
+      err.statusCode = 409;
+      throw err;
+    }
+
     const cleanColor = (primaryColor && colorMap[primaryColor.toUpperCase()]) ? primaryColor.toUpperCase() : 'BLUE';
     const assignedShade = colorMap[cleanColor];
-    const cleanNickname = nickname.trim();
+
+    // Validate DOB
+    if (!dob) {
+      const err = new Error('Date of birth is required.');
+      err.statusCode = 400;
+      throw err;
+    }
+    const parsedDob = new Date(dob);
+    if (isNaN(parsedDob.getTime())) {
+      const err = new Error('Invalid Date of Birth.');
+      err.statusCode = 400;
+      throw err;
+    }
+    const today = new Date();
+    if (parsedDob > today) {
+      const err = new Error('Date of Birth cannot be in the future.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (parsedDob.getFullYear() < 1900) {
+      const err = new Error('Date of Birth must be after year 1900.');
+      err.statusCode = 400;
+      throw err;
+    }
 
     const isDbConnected = getDatabaseStatus().connected;
     if (isDbConnected) {
@@ -458,33 +520,62 @@ export const authService = {
           nickname: cleanNickname,
           primaryColor: cleanColor,
           assignedShade,
+          dob: parsedDob,
           isProfileComplete: true
         },
         { new: true }
       );
+
+      if (!updatedUser) {
+        const err = new Error('User not found.');
+        err.statusCode = 404;
+        throw err;
+      }
 
       await PlayerStats.findOneAndUpdate(
         { playerId },
         {
           nickname: cleanNickname,
           primaryColor: cleanColor
-        }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
-      logger.info(`[AuthService] Updated profile for player ${playerId}: nickname=${cleanNickname}, color=${cleanColor}`);
+      logger.info(`[AuthService] Updated profile for player ${playerId}: nickname=${cleanNickname}, color=${cleanColor}, dob=${parsedDob.toISOString().split('T')[0]}`);
       return updatedUser;
     } else {
       // In-memory update
       const user = inMemoryUsers.get(playerId);
-      if (user) {
-        user.nickname = cleanNickname;
-        user.primaryColor = cleanColor;
-        user.assignedShade = assignedShade;
-        user.isProfileComplete = true;
+      if (!user) {
+        const err = new Error('User not found in session.');
+        err.statusCode = 404;
+        throw err;
       }
 
-      const stats = inMemoryPlayerStats.get(playerId);
-      if (stats) {
+      user.nickname = cleanNickname;
+      user.primaryColor = cleanColor;
+      user.assignedShade = assignedShade;
+      user.dob = parsedDob;
+      user.isProfileComplete = true;
+      user.updatedAt = new Date();
+
+      let stats = inMemoryPlayerStats.get(playerId);
+      if (!stats) {
+        stats = {
+          playerId,
+          nickname: cleanNickname,
+          primaryColor: cleanColor,
+          matchesPlayed: 0,
+          wins: 0,
+          losses: 0,
+          winPercentage: 0,
+          currentStreak: 0,
+          bestStreak: 0,
+          opponentsEliminated: 0,
+          lastMatchAt: null
+        };
+        inMemoryPlayerStats.set(playerId, stats);
+      } else {
         stats.nickname = cleanNickname;
         stats.primaryColor = cleanColor;
       }

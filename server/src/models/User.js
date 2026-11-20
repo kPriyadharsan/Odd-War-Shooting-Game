@@ -50,13 +50,14 @@ const userSchema = new mongoose.Schema(
       default: ''
     },
 
-    // In-game Notebook Warrior Nickname
+    // In-game Notebook Warrior Nickname (chosen explicitly by player, never defaulted to Google name)
     nickname: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       minlength: 2,
-      maxlength: 24
+      maxlength: 24,
+      default: null
     },
 
     // In-game Primary Color Family
@@ -69,10 +70,16 @@ const userSchema = new mongoose.Schema(
     // Distinct assigned color shade
     assignedShade: {
       name: { type: String, default: 'Blue Ink' },
-      hex: { type: String, default: '#2563eb' }
+      hex: { type: String, default: '#2B68B4' }
     },
 
-    // Whether the player completed their first-time identity setup form
+    // Player Date of Birth (Private - strictly account security & age verification)
+    dob: {
+      type: Date,
+      default: null
+    },
+
+    // Whether the player completed their first-time identity setup form (requires nickname, color, and dob)
     isProfileComplete: {
       type: Boolean,
       default: false,
@@ -106,10 +113,20 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Sparse unique index on nickname
+userSchema.index({ nickname: 1 }, { unique: true, sparse: true });
+
 // Auto-populate legacy username from nickname if not explicitly provided
+// and evaluate profile completeness strictly against all three required fields
 userSchema.pre('save', function (next) {
   if (!this.username && this.nickname) {
     this.username = this.nickname;
+  }
+  // All 3 fields are required for a complete profile
+  if (this.nickname && this.primaryColor && this.dob) {
+    this.isProfileComplete = true;
+  } else {
+    this.isProfileComplete = false;
   }
   next();
 });

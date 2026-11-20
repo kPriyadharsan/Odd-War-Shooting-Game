@@ -39,12 +39,14 @@ export const getPlayerSession = () => {
   if (activeAuthUser && activeAuthUser.playerId) {
     return {
       playerId: activeAuthUser.playerId,
-      nickname: activeAuthUser.nickname || activeAuthUser.displayName || 'Warrior',
+      nickname: activeAuthUser.nickname || 'Warrior',
       primaryColor: (activeAuthUser.primaryColor || 'BLUE').toUpperCase(),
+      dob: activeAuthUser.dob || null,
+      isProfileComplete: Boolean(activeAuthUser.isProfileComplete),
       isAuthenticated: true,
       email: activeAuthUser.email,
       avatarUrl: activeAuthUser.avatarUrl,
-      isCustomized: true
+      isCustomized: Boolean(activeAuthUser.isProfileComplete)
     };
   }
 

@@ -144,12 +144,20 @@ export const PlayerProfilePage = () => {
                   <span className="ml-2 font-mono text-xs text-[#2563EB]">({user.email})</span>
                 )}
               </p>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {isAuthenticated ? (
-                  <span className="inline-flex items-center text-xs font-mono text-[#059669] bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
-                    <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                    Google Verified Account
-                  </span>
+                  <>
+                    <span className="inline-flex items-center text-xs font-mono text-[#059669] bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                      Google Verified Account
+                    </span>
+                    {user?.dob && (
+                      <span className="inline-flex items-center text-xs font-mono text-[#4B5563] bg-[#F3F4F6] px-2 py-0.5 rounded-full border border-[#E5E7EB]">
+                        <Calendar className="w-3 h-3 mr-1 text-[#2B68B4]" />
+                        DOB: {formatDate(user.dob)} (Private)
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <span className="inline-flex items-center text-xs font-mono text-[#D97706] bg-[#FFFBEB] px-2 py-0.5 rounded-full border border-[#FDE68A]">
                     Guest Session
@@ -182,7 +190,7 @@ export const PlayerProfilePage = () => {
               className="px-4 py-2.5 rounded-xl font-handwriting font-bold text-sm bg-[#23252A] text-[#F8F4EB] hover:bg-[#3E424B] transition-colors shadow-sketch-sm flex items-center gap-1.5"
             >
               <Edit3 className="w-4 h-4" />
-              <span>Customize Ink & Name</span>
+              <span>Edit Profile Settings</span>
             </Link>
           </div>
         </div>

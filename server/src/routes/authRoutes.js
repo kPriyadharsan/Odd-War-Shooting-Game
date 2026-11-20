@@ -4,9 +4,10 @@ import {
   handleGoogleCallback,
   getCurrentUser,
   logoutUser,
-  updateProfile
+  updateProfile,
+  checkNickname
 } from '../controllers/authController.js';
-import { requireAuth } from '../middleware/authMiddleware.js';
+import { requireAuth, optionalAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -19,7 +20,10 @@ router.get('/google/callback', handleGoogleCallback);
 // GET /api/auth/me - Returns current authenticated player & session
 router.get('/me', requireAuth, getCurrentUser);
 
-// PUT & PATCH /api/auth/profile - Updates player nickname & color
+// GET /api/auth/check-nickname - Checks availability of desired game nickname
+router.get('/check-nickname', optionalAuth, checkNickname);
+
+// PUT & PATCH /api/auth/profile - Updates player nickname, color & DOB
 router.put('/profile', requireAuth, updateProfile);
 router.patch('/profile', requireAuth, updateProfile);
 

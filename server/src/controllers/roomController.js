@@ -54,6 +54,9 @@ const joinRoomSchema = z.object({
 
 export const createPublicRoom = async (req, res, next) => {
   try {
+    if (req.user && !req.user.isProfileComplete) {
+      return sendError(res, 'Please complete your player profile onboarding before creating or joining games.', 403);
+    }
     const parsed = createPublicSchema.safeParse(req.body);
     if (!parsed.success) {
       return sendError(res, parsed.error.errors[0].message, 400);
@@ -70,6 +73,9 @@ export const createPublicRoom = async (req, res, next) => {
 
 export const createPrivateRoom = async (req, res, next) => {
   try {
+    if (req.user && !req.user.isProfileComplete) {
+      return sendError(res, 'Please complete your player profile onboarding before creating or joining games.', 403);
+    }
     const parsed = createPrivateSchema.safeParse(req.body);
     if (!parsed.success) {
       return sendError(res, parsed.error.errors[0].message, 400);
@@ -130,6 +136,9 @@ export const getRoomByCode = async (req, res, next) => {
 
 export const joinRoom = async (req, res, next) => {
   try {
+    if (req.user && !req.user.isProfileComplete) {
+      return sendError(res, 'Please complete your player profile onboarding before creating or joining games.', 403);
+    }
     const parsed = joinRoomSchema.safeParse(req.body);
     if (!parsed.success) {
       return sendError(res, parsed.error.errors[0].message, 400);

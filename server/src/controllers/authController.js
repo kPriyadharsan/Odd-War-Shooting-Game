@@ -7,11 +7,16 @@ import { logger } from '../utils/logger.js';
 /**
  * Sanitizes user record before returning to clients.
  */
-const sanitizeUser = (user) => {
+const sanitizeUser = (user, includePrivate = true) => {
   if (!user) return null;
   const raw = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };
   delete raw.__v;
   delete raw.passwordHash;
+  if (!includePrivate) {
+    delete raw.email;
+    delete raw.dob;
+    delete raw.googleId;
+  }
   return raw;
 };
 
@@ -170,26 +175,49 @@ export const handleGoogleCallback = async (req, res) => {
 };
 
 /**
- * Updates authenticated player profile (nickname and primary color)
+ * Checks real-time availability of a proposed game nickname.
+ */
+export const checkNickname = async (req, res) => {
+  try {
+    const { nickname } = req.query;
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 24) {
+      return sendSuccess(res, {
+        available: false,
+        message: 'Nickname must be between 2 and 24 characters'
+      });
+    }
+
+    const available = await authService.isNicknameAvailable(nickname.trim(), req.user?.playerId);
+    return sendSuccess(res, {
+      available,
+      message: available ? 'Nickname is available' : 'Nickname is already taken'
+    });
+  } catch (error) {
+    logger.error('[AuthController] Failed to check nickname:', error);
+    return sendError(res, 'Failed to check nickname availability', 500);
+  }
+};
+
+/**
+ * Updates authenticated player profile (nickname, primary color, and date of birth)
  * and marks profile onboarding as complete.
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { nickname, primaryColor } = req.body;
-    if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 24) {
-      return sendError(res, 'Nickname must be between 2 and 24 characters', 400);
-    }
+    const { nickname, primaryColor, dob } = req.body;
 
     const updatedUser = await authService.updateUserProfile({
       playerId: req.user.playerId,
-      nickname: nickname.trim(),
-      primaryColor
+      nickname,
+      primaryColor,
+      dob
     });
 
-    return sendSuccess(res, { user: sanitizeUser(updatedUser) }, 'Profile updated successfully');
+    return sendSuccess(res, { user: sanitizeUser(updatedUser, true) }, 'Profile updated successfully');
   } catch (error) {
     logger.error('[AuthController] Failed to update profile:', error);
-    return sendError(res, error.message || 'Failed to update profile', 500);
+    const statusCode = error.statusCode || (error.message?.includes('taken') ? 409 : 400);
+    return sendError(res, error.message || 'Failed to update profile', statusCode);
   }
 };
 

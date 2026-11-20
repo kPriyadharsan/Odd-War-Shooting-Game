@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { ProfileGate } from './components/auth/ProfileGate.jsx';
 import { RootLayout } from './layouts/RootLayout.jsx';
 import { LandingPage } from './pages/LandingPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
@@ -35,29 +36,114 @@ export function App() {
             {/* 2. Authentication */}
             <Route path="login" element={<LoginPage />} />
 
-            {/* 3. Player Profile, Stats & Character Setup */}
-            <Route path="profile" element={<PlayerProfilePage />} />
-            <Route path="stats" element={<PlayerProfilePage />} />
+            {/* 3. Mandatory Onboarding & Identity Setup */}
             <Route path="profile-setup" element={<ProfileSetupPage />} />
 
-            {/* 4. Global Leaderboard & Standings */}
-            <Route path="leaderboard" element={<LeaderboardPage />} />
-
-            {/* 5. Game Lobby & Room Management */}
-            <Route path="lobby" element={<RoomsDashboard />} />
-            <Route path="rooms" element={<RoomsDashboard />} />
-            <Route path="rooms/public" element={<PublicRoomsPage />} />
-            <Route path="rooms/create" element={<CreateRoomPage />} />
-            <Route path="rooms/join" element={<JoinRoomPage />} />
-
-            {/* 6. Multiplayer Waiting Room */}
-            <Route path="rooms/:code" element={<WaitingRoomPage />} />
-            <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
-
-            {/* 7. Notebook Battlefield Gameplay Arena */}
-            <Route path="rooms/:code/battlefield" element={<BattlefieldPage />} />
-            <Route path="rooms/:code/game" element={<BattlefieldPage />} />
-            <Route path="game/:code" element={<BattlefieldPage />} />
+            {/* 4. Protected Game Areas (Mandatory Profile Gate for Google users) */}
+            <Route
+              path="profile"
+              element={
+                <ProfileGate>
+                  <PlayerProfilePage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="stats"
+              element={
+                <ProfileGate>
+                  <PlayerProfilePage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="leaderboard"
+              element={
+                <ProfileGate>
+                  <LeaderboardPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="lobby"
+              element={
+                <ProfileGate>
+                  <RoomsDashboard />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms"
+              element={
+                <ProfileGate>
+                  <RoomsDashboard />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/public"
+              element={
+                <ProfileGate>
+                  <PublicRoomsPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/create"
+              element={
+                <ProfileGate>
+                  <CreateRoomPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/join"
+              element={
+                <ProfileGate>
+                  <JoinRoomPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/:code"
+              element={
+                <ProfileGate>
+                  <WaitingRoomPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/:code/waiting"
+              element={
+                <ProfileGate>
+                  <WaitingRoomPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/:code/battlefield"
+              element={
+                <ProfileGate>
+                  <BattlefieldPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="rooms/:code/game"
+              element={
+                <ProfileGate>
+                  <BattlefieldPage />
+                </ProfileGate>
+              }
+            />
+            <Route
+              path="game/:code"
+              element={
+                <ProfileGate>
+                  <BattlefieldPage />
+                </ProfileGate>
+              }
+            />
 
             {/* Development & Internal Diagnostic Views (Isolated to dev mode) */}
             {import.meta.env.DEV && (

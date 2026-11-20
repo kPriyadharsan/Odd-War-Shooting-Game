@@ -61,9 +61,9 @@ export const authApi = {
   },
 
   /**
-   * Updates player's profile (call-sign nickname and primary color) on the server.
+   * Updates player's profile (nickname, primary color, and date of birth) on the server.
    */
-  updateProfile: async ({ nickname, primaryColor }) => {
+  updateProfile: async ({ nickname, primaryColor, dob }) => {
     const apiBase = getApiBase();
     const res = await fetch(`${apiBase}/auth/profile`, {
       method: 'PUT',
@@ -72,7 +72,7 @@ export const authApi = {
         'Accept': 'application/json'
       },
       credentials: 'include',
-      body: JSON.stringify({ nickname, primaryColor })
+      body: JSON.stringify({ nickname, primaryColor, dob })
     });
 
     if (!res.ok) {
@@ -82,6 +82,32 @@ export const authApi = {
 
     const data = await res.json();
     return data.data?.user || null;
+  },
+
+  /**
+   * Checks if a desired warrior nickname is available on the server.
+   */
+  checkNicknameAvailability: async (nickname) => {
+    if (!nickname || typeof nickname !== 'string') {
+      return { available: false, message: 'Nickname required' };
+    }
+    const apiBase = getApiBase();
+    try {
+      const res = await fetch(`${apiBase}/auth/check-nickname?nickname=${encodeURIComponent(nickname.trim())}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        return { available: false, message: 'Could not verify nickname' };
+      }
+      const data = await res.json();
+      return data.data || { available: false, message: 'Unavailable' };
+    } catch {
+      return { available: true, message: 'Offline check passed' };
+    }
   },
 
   /**

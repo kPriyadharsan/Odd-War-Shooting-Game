@@ -29,10 +29,10 @@ export const validateNickname = (rawNickname) => {
   }
 
   // 2. Minimum length check
-  if (trimmed.length < 3) {
+  if (trimmed.length < 2) {
     return {
       isValid: false,
-      error: `Nickname is too short (currently ${trimmed.length} / min 3 chars).`,
+      error: `Nickname is too short (currently ${trimmed.length} / min 2 chars).`,
       trimmed,
       hasLeadingTrailingSpaces,
       hasMultipleInternalSpaces
@@ -40,10 +40,10 @@ export const validateNickname = (rawNickname) => {
   }
 
   // 3. Maximum length check
-  if (trimmed.length > 16) {
+  if (trimmed.length > 24) {
     return {
       isValid: false,
-      error: `Nickname is too long (currently ${trimmed.length} / max 16 chars).`,
+      error: `Nickname is too long (currently ${trimmed.length} / max 24 chars).`,
       trimmed,
       hasLeadingTrailingSpaces,
       hasMultipleInternalSpaces
@@ -69,5 +69,47 @@ export const validateNickname = (rawNickname) => {
     trimmed,
     hasLeadingTrailingSpaces,
     hasMultipleInternalSpaces
+  };
+};
+
+/**
+ * Validates player's date of birth (DOB).
+ * Enforces non-empty, valid calendar date, strictly non-future, and year >= 1900.
+ */
+export const validateDob = (dobString) => {
+  if (!dobString || typeof dobString !== 'string' || dobString.trim().length === 0) {
+    return {
+      isValid: false,
+      error: 'Date of birth is required.'
+    };
+  }
+
+  const date = new Date(dobString.trim());
+  if (isNaN(date.getTime())) {
+    return {
+      isValid: false,
+      error: 'Please enter a valid calendar date.'
+    };
+  }
+
+  const today = new Date();
+  if (date > today) {
+    return {
+      isValid: false,
+      error: 'Date of birth cannot be in the future.'
+    };
+  }
+
+  if (date.getFullYear() < 1900) {
+    return {
+      isValid: false,
+      error: 'Date of birth year must be 1900 or later.'
+    };
+  }
+
+  return {
+    isValid: true,
+    error: null,
+    isoString: date.toISOString().split('T')[0]
   };
 };
