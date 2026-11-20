@@ -26,7 +26,7 @@ export const Navbar = () => {
           </div>
           <div className="flex items-center">
             <span className="font-handwriting font-bold text-xl sm:text-2xl tracking-wide text-[#23252A]">
-              ODD WARS
+              ODD WAR
             </span>
             <span className="hidden md:inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[#EFE8DA] border border-[#D5CFC3] text-[#5C6069]">
               Notebook

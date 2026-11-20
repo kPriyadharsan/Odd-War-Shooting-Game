@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 /**
  * Server-Authoritative Book Engine (Task 08)
  *
- * Implements the signature ODD WARS school notebook random page flip mechanic:
+ * Implements the signature ODD WAR school notebook random page flip mechanic:
  * - Uses the room's host-configured bookPageCount (100 or 200 pages).
  * - Generates random page numbers cryptographically on the server using crypto.randomInt.
  * - Extracts final digit (pageNumber % 10).

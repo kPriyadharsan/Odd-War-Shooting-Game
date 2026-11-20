@@ -449,7 +449,7 @@ export const WaitingRoomPage = () => {
                 <span className="w-2 h-2 rounded-full bg-[#2E8557] animate-ping shrink-0" />
               </div>
               <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#242730] truncate">
-                ODD WARS — Waiting for Warriors
+                ODD WAR — Waiting for Warriors
               </h1>
             </div>
           </div>

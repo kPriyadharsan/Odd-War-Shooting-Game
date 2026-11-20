@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
  */
 const userSchema = new mongoose.Schema(
   {
-    // Unique internal ODD WARS player ID (matches playerSession format: p_...)
+    // Unique internal ODD WAR player ID (matches playerSession format: p_...)
     playerId: {
       type: String,
       required: true,

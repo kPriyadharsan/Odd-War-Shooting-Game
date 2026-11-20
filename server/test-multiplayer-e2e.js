@@ -1,5 +1,5 @@
 /**
- * ODD WARS — Complete End-to-End Multiplayer Game Flow Integration Test
+ * ODD WAR — Complete End-to-End Multiplayer Game Flow Integration Test
  *
  * Tests the entire real-world player flow:
  * 1. Player 1 creates a public room.
@@ -26,7 +26,7 @@ import { io as ioClient } from '../client/node_modules/socket.io-client/build/es
 
 async function runFullMultiplayerTest() {
   console.log('\n================================================================');
-  console.log('   ODD WARS — FULL MULTIPLAYER END-TO-END VALIDATION SUITE    ');
+  console.log('   ODD WAR — FULL MULTIPLAYER END-TO-END VALIDATION SUITE    ');
   console.log('================================================================\n');
 
   const { startServer } = await import('./src/server.js');

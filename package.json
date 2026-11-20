@@ -1,7 +1,7 @@
 {
-  "name": "odd-wars",
+  "name": "odd-war",
   "version": "1.0.0",
-  "description": "ODD WARS — Real-Time Multiplayer Online Game",
+  "description": "ODD WAR — Real-Time Multiplayer Online Game",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -22,8 +22,8 @@
     "express",
     "react",
     "game",
-    "odd-wars"
+    "odd-war"
   ],
-  "author": "ODD WARS Development Team",
+  "author": "ODD WAR Development Team",
   "license": "MIT"
 }

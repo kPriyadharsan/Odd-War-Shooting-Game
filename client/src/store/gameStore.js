@@ -7,7 +7,7 @@
  * during the final integration stage.
  */
 
-const STORAGE_KEY = 'odd_wars_player_profile_draft';
+const STORAGE_KEY = 'odd_war_player_profile_draft';
 
 export const createInitialProfile = () => ({
   nickname: '',
@@ -22,7 +22,7 @@ export const createInitialProfile = () => ({
 
 export const loadProfileDraft = () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('odd_wars_player_profile_draft');
     if (!raw) return createInitialProfile();
     const parsed = JSON.parse(raw);
     return {

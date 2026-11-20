@@ -1,7 +1,7 @@
 {
-  "name": "odd-wars-server",
+  "name": "odd-war-server",
   "version": "1.0.0",
-  "description": "ODD WARS Authoritative Multiplayer Game & API Server",
+  "description": "ODD WAR Authoritative Multiplayer Game & API Server",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -18,7 +18,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.2",
-    "odd-wars": "file:..",
+    "odd-war": "file:..",
     "redis": "^4.7.0",
     "socket.io": "^4.8.1",
     "zod": "^3.23.8"

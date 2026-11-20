@@ -1,7 +1,7 @@
 // Set test environment flags BEFORE importing server module
 process.env.PORT = '5097';
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test_jwt_secret_for_odd_wars_oauth_verification';
+process.env.JWT_SECRET = 'test_jwt_secret_for_odd_war_oauth_verification';
 
 async function runTests() {
   console.log('================================================================');
@@ -154,7 +154,7 @@ async function runTests() {
     console.log('\n[TEST 6] Testing persistent session creation and hashing...');
     const { session, rawToken } = await sessionService.createSession({
       user: linkedUser,
-      req: { headers: { 'user-agent': 'OddWarsTestAgent/1.0' }, ip: '127.0.0.1' }
+      req: { headers: { 'user-agent': 'OddWarTestAgent/1.0' }, ip: '127.0.0.1' }
     });
 
     console.log(`[TEST 6] Session ID: ${session.sessionId}, rawToken length: ${rawToken.length}`);
@@ -181,7 +181,7 @@ async function runTests() {
     // With session cookie -> 200
     const resMeAuth = await fetch(`${BASE_URL}/auth/me`, {
       headers: {
-        'Cookie': `odd_wars_session=${rawToken}`
+        'Cookie': `odd_war_session=${rawToken}`
       }
     });
     const meBody = await resMeAuth.json();
@@ -198,7 +198,7 @@ async function runTests() {
     const resLogout = await fetch(`${BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: {
-        'Cookie': `odd_wars_session=${rawToken}`
+        'Cookie': `odd_war_session=${rawToken}`
       }
     });
     console.log(`[TEST 8] Logout Status: ${resLogout.status}`);
@@ -214,7 +214,7 @@ async function runTests() {
     // Subsequent call to /auth/me must be rejected
     const resMeAfterLogout = await fetch(`${BASE_URL}/auth/me`, {
       headers: {
-        'Cookie': `odd_wars_session=${rawToken}`
+        'Cookie': `odd_war_session=${rawToken}`
       }
     });
     if (resMeAfterLogout.status !== 401) {

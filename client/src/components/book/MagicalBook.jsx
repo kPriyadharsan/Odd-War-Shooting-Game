@@ -165,7 +165,7 @@ export const MagicalBook = ({
                   <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-[#D59926]" />
                 </div>
                 <h3 className="font-display text-lg sm:text-xl font-bold tracking-wider text-[#F8F4EB]">
-                  ODD WARS
+                  ODD WAR
                 </h3>
                 <span className="font-handwriting text-xs text-[#D59926]">
                   Magical Book of Fate
@@ -206,7 +206,7 @@ export const MagicalBook = ({
 
                 {/* Left Header */}
                 <div className="relative z-10 flex items-center justify-between text-[10px] font-mono text-[#8C929D] border-b border-[#D5CFC3] pb-1.5 pl-2">
-                  <span>ODD WARS RULES</span>
+                  <span>ODD WAR RULES</span>
                   <span>{maxPages} PAGES</span>
                 </div>
 
@@ -229,7 +229,7 @@ export const MagicalBook = ({
 
                 {/* Left Footer */}
                 <div className="relative z-10 text-[9px] font-mono text-[#8C929D] pl-2">
-                  Odd Wars Book • Authoritative
+                  Odd War Book • Authoritative
                 </div>
               </div>
 

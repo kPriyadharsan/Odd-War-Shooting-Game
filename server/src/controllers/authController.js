@@ -45,7 +45,7 @@ export const initiateGoogleAuth = async (req, res) => {
     const isSecure = req.secure || req.headers?.['x-forwarded-proto'] === 'https' || config.nodeEnv === 'production' || Boolean(process.env.RENDER);
 
     // Store sealed transaction in temporary HttpOnly cookie (10 minute TTL)
-    res.cookie('odd_wars_oauth_tx', transactionToken, {
+    res.cookie('odd_war_oauth_tx', transactionToken, {
       httpOnly: true,
       secure: isSecure,
       sameSite: 'lax',
@@ -87,7 +87,7 @@ export const handleGoogleCallback = async (req, res) => {
     // 2. Validate and consume sealed transaction token
     // Prefer transaction token from HttpOnly cookie; gracefully recover from signed state param
     // to protect against reverse proxy / cross-domain cookie stripping (e.g. Render <-> Vercel)
-    let transactionToken = req.cookies?.odd_wars_oauth_tx;
+    let transactionToken = req.cookies?.odd_war_oauth_tx || req.cookies?.odd_wars_oauth_tx;
     if (!transactionToken && typeof state === 'string' && state.includes('.')) {
       logger.info('[AuthController] OAuth cookie missing, recovering transaction token from verified state parameter');
       transactionToken = state;
@@ -128,7 +128,7 @@ export const handleGoogleCallback = async (req, res) => {
     const isSecure = req.secure || req.headers?.['x-forwarded-proto'] === 'https' || config.nodeEnv === 'production' || Boolean(process.env.RENDER);
 
     // 6. Set secure HttpOnly session cookie (7 days)
-    res.cookie('odd_wars_session', rawToken, {
+    res.cookie('odd_war_session', rawToken, {
       httpOnly: true,
       secure: isSecure,
       sameSite: 'lax',
@@ -136,7 +136,13 @@ export const handleGoogleCallback = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    // Clear temporary transaction cookie
+    // Clear temporary transaction cookies
+    res.clearCookie('odd_war_oauth_tx', {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: 'lax',
+      path: '/'
+    });
     res.clearCookie('odd_wars_oauth_tx', {
       httpOnly: true,
       secure: isSecure,
@@ -214,11 +220,17 @@ export const getCurrentUser = async (req, res) => {
  */
 export const logoutUser = async (req, res) => {
   try {
-    const rawToken = req.cookies?.odd_wars_session;
+    const rawToken = req.cookies?.odd_war_session || req.cookies?.odd_wars_session;
     if (rawToken) {
       await sessionService.revokeSession(rawToken);
     }
 
+    res.clearCookie('odd_war_session', {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
     res.clearCookie('odd_wars_session', {
       httpOnly: true,
       secure: config.nodeEnv === 'production',

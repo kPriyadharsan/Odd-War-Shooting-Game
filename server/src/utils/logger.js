@@ -1,5 +1,5 @@
 /**
- * Structured Logger for ODD WARS Server
+ * Structured Logger for ODD WAR Server
  */
 const getTimestamp = () => new Date().toISOString();
 

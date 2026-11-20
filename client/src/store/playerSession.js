@@ -1,6 +1,6 @@
 import { loadProfileDraft } from './gameStore.js';
 
-const SESSION_KEY = 'odd_wars_player_session_id';
+const SESSION_KEY = 'odd_war_player_session_id';
 
 let memorySessionId = null;
 let activeAuthUser = null;
@@ -50,7 +50,7 @@ export const getPlayerSession = () => {
 
   let sessionId = null;
   try {
-    sessionId = localStorage.getItem(SESSION_KEY);
+    sessionId = localStorage.getItem(SESSION_KEY) || localStorage.getItem('odd_wars_player_session_id');
     if (!sessionId) {
       sessionId = `p_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
       localStorage.setItem(SESSION_KEY, sessionId);

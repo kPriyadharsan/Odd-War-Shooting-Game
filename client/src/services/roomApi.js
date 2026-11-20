@@ -3,7 +3,7 @@ import { config } from '../config/env.js';
 const API_BASE = `${config.apiUrl}/rooms`;
 
 /**
- * REST Client for ODD WARS Room Management
+ * REST Client for ODD WAR Room Management
  */
 export const roomApi = {
   createPublicRoom: async ({ name, maxPlayers = 4, bookPageCount = 100, player }) => {

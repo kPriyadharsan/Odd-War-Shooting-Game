@@ -9,7 +9,7 @@ export const ComingSoonModal = ({ isOpen, onClose }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Opening Exercise Book..."
-      subtitle="ODD WARS Development Roadmap"
+      subtitle="ODD WAR Development Roadmap"
       footer={
         <Button variant="primary" onClick={onClose}>
           Got it, Commander

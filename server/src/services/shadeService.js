@@ -1,5 +1,5 @@
 /**
- * ODD WARS Territory Shade Assignment Service
+ * ODD WAR Territory Shade Assignment Service
  *
  * Requirements:
  * - 5 primary color families: RED, GREEN, BLUE, YELLOW, BLACK

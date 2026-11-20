@@ -1,5 +1,5 @@
 {
-  "name": "odd-wars-client",
+  "name": "odd-war-client",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -12,7 +12,7 @@
     "framer-motion": "^11.11.17",
     "gsap": "^3.12.5",
     "lucide-react": "^0.460.0",
-    "odd-wars": "file:..",
+    "odd-war": "file:..",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",

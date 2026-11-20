@@ -16,7 +16,7 @@ export const getHealth = (req, res) => {
 
   const healthData = {
     status: 'healthy',
-    service: 'ODD WARS Game Server',
+    service: 'ODD WAR Game Server',
     version: '1.0.0',
     environment: config.nodeEnv,
     uptimeSeconds: Math.floor(uptimeSeconds),

@@ -79,7 +79,7 @@ export const RoomsDashboard = () => {
           </div>
 
           <h1 className="text-3xl xs:text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
-            ODD WARS Arena Lobby
+            ODD WAR Arena Lobby
           </h1>
 
           <p className="mt-2 text-sm sm:text-base text-[#5C6069] max-w-2xl font-sans">

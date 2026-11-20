@@ -1,5 +1,5 @@
 /**
- * ODD WARS — 6 Distinct Notebook Paper Styles (Task Redesign)
+ * ODD WAR — 6 Distinct Notebook Paper Styles (Task Redesign)
  *
  * Requirements:
  * - All styles are rendered using lightweight, performant CSS gradients & colors.

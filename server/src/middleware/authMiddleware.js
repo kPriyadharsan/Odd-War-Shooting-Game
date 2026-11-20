@@ -5,8 +5,8 @@ import { sendError } from '../utils/response.js';
  * Extracts session token from HttpOnly cookie or Authorization Bearer header.
  */
 const extractSessionToken = (req) => {
-  if (req.cookies && req.cookies.odd_wars_session) {
-    return req.cookies.odd_wars_session;
+  if (req.cookies && (req.cookies.odd_war_session || req.cookies.odd_wars_session)) {
+    return req.cookies.odd_war_session || req.cookies.odd_wars_session;
   }
 
   const authHeader = req.headers.authorization;

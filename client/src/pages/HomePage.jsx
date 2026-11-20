@@ -60,7 +60,7 @@ export const HomePage = () => {
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white mb-4">
-            ODD <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">WARS</span>
+            ODD <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">WAR</span>
           </h1>
 
           <p className="text-slate-400 text-base sm:text-lg leading-relaxed">

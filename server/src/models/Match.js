@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 /**
  * Match Schema
- * Authoritative record of completed ODD WARS matches.
+ * Authoritative record of completed ODD WAR matches.
  */
 const matchPlayerSchema = new mongoose.Schema(
   {
@@ -35,7 +35,7 @@ const matchSchema = new mongoose.Schema(
     },
     roomName: {
       type: String,
-      default: 'Odd Wars Match'
+      default: 'Odd War Match'
     },
     isPrivate: {
       type: Boolean,

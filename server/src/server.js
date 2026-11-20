@@ -74,7 +74,7 @@ app.get(['/', '/login', '/profile', '/lobby', '/leaderboard'], (req, res, next) 
   if (req.accepts('html')) {
     const targetOrigin = (config.clientUrl && !config.clientUrl.includes('localhost'))
       ? config.clientUrl.replace(/\/+$/, '')
-      : 'https://odd-wars.vercel.app';
+      : 'https://odd-war.vercel.app';
     return res.redirect(`${targetOrigin}${req.originalUrl}`);
   }
   next();
@@ -90,7 +90,7 @@ export const startServer = async (portOverride) => {
     const activePort = portOverride || parseInt(process.env.PORT || config.port, 10);
 
     logger.info('==========================================');
-    logger.info('     ODD WARS GAME SERVER INITIALIZING    ');
+    logger.info('      ODD WAR GAME SERVER INITIALIZING    ');
     logger.info('==========================================');
     logger.info(`Environment: ${process.env.NODE_ENV || config.nodeEnv}`);
     logger.info(`Configured Client URL: ${config.clientUrl}`);

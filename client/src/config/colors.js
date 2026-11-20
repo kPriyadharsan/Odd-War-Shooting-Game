@@ -1,5 +1,5 @@
 /**
- * ODD WARS Color Family System
+ * ODD WAR Color Family System
  * Defines the 5 primary character color families and their future room shade scales.
  *
  * Architecture note:

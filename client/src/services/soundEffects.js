@@ -1,5 +1,5 @@
 /**
- * ODD WARS Procedural Sound Effects & Audio Manager (Task 12)
+ * ODD WAR Procedural Sound Effects & Audio Manager (Task 12)
  *
  * Implemented using Web Audio API:
  * - 100% original, copyright-free procedural synthesis (no external mp3 dependencies or asset 404s).
@@ -17,8 +17,8 @@ class SoundEffectsService {
 
     if (typeof window !== 'undefined') {
       try {
-        this.isMuted = localStorage.getItem('odd_wars_sound_muted') === 'true';
-        const savedVol = localStorage.getItem('odd_wars_sound_volume');
+        this.isMuted = (localStorage.getItem('odd_war_sound_muted') ?? localStorage.getItem('odd_wars_sound_muted')) === 'true';
+        const savedVol = localStorage.getItem('odd_war_sound_volume') ?? localStorage.getItem('odd_wars_sound_volume');
         this.volume = savedVol !== null ? parseFloat(savedVol) : 0.7;
       } catch (e) {}
     }
@@ -43,14 +43,14 @@ class SoundEffectsService {
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, vol));
     try {
-      localStorage.setItem('odd_wars_sound_volume', this.volume.toString());
+      localStorage.setItem('odd_war_sound_volume', this.volume.toString());
     } catch (e) {}
   }
 
   toggleMute() {
     this.isMuted = !this.isMuted;
     try {
-      localStorage.setItem('odd_wars_sound_muted', this.isMuted.toString());
+      localStorage.setItem('odd_war_sound_muted', this.isMuted.toString());
     } catch (e) {}
     return this.isMuted;
   }

@@ -1,5 +1,5 @@
 /**
- * ODD WARS Authoritative Game Rules Configuration (Task 11)
+ * ODD WAR Authoritative Game Rules Configuration (Task 11)
  *
  * Centralizes all configurable mechanics:
  * - Construction progression requirements

@@ -802,7 +802,7 @@ export const BattlefieldPage = () => {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h1 className="font-display font-black text-sm sm:text-base text-[#23252A] tracking-tight truncate">
-                    ODD WARS • {room.name}
+                    ODD WAR • {room.name}
                   </h1>
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-mono text-[#5C6069]">

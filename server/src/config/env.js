@@ -17,14 +17,14 @@ const isProductionEnvironment = nodeEnv === 'production' || Boolean(process.env.
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
   nodeEnv,
-  clientUrl: process.env.CLIENT_URL || (isProductionEnvironment ? 'https://odd-wars.vercel.app' : 'http://localhost:5173'),
+  clientUrl: process.env.CLIENT_URL || (isProductionEnvironment ? 'https://odd-war.vercel.app' : 'http://localhost:5173'),
   mongoUri: process.env.MONGO_URI || '',
   redisUrl: process.env.REDIS_URL || '',
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   googleClientId,
   googleClientSecret,
-  googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || (isProductionEnvironment ? 'https://odd-wars.vercel.app/api/auth/google/callback' : 'http://localhost:5173/api/auth/google/callback'),
+  googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || (isProductionEnvironment ? 'https://odd-war.vercel.app/api/auth/google/callback' : 'http://localhost:5173/api/auth/google/callback'),
 
   // Feature flags / Active integrations
   isMongoConfigured: Boolean(process.env.MONGO_URI && process.env.MONGO_URI.trim().length > 0),

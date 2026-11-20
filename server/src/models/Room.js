@@ -182,7 +182,7 @@ const roomSchema = new mongoose.Schema(
       trim: true,
       minlength: 3,
       maxlength: 32,
-      default: 'Odd Wars Battle'
+      default: 'Odd War Battle'
     },
     isPrivate: {
       type: Boolean,

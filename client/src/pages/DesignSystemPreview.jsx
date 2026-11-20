@@ -51,7 +51,7 @@ export const DesignSystemPreview = () => {
           </div>
 
           <h1 className="text-3xl xs:text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
-            ODD WARS — Notebook Design System
+            ODD WAR — Notebook Design System
           </h1>
 
           <p className="mt-2 text-base text-[#5C6069] max-w-3xl font-sans">
@@ -75,7 +75,7 @@ export const DesignSystemPreview = () => {
               </span>
               <div className="space-y-3">
                 <div className="text-3xl font-handwriting font-bold text-[#23252A]">
-                  Odd Wars: Quick Match
+                  Odd War: Quick Match
                 </div>
                 <div className="text-2xl font-handwriting font-bold text-[#2B68B4]">
                   Round 03 — Pencil Crossfire
@@ -376,7 +376,7 @@ export const DesignSystemPreview = () => {
 
         {/* Footer Note */}
         <footer className="pt-8 border-t border-[#D5CFC3] text-center text-xs font-mono text-[#5C6069]">
-          ODD WARS &bull; Task 02 Design System & Animation Foundation Completed &bull; Ready for Task 03 Approval
+          ODD WAR &bull; Task 02 Design System & Animation Foundation Completed &bull; Ready for Task 03 Approval
         </footer>
 
         {/* Demo Modal Instance */}
@@ -398,7 +398,7 @@ export const DesignSystemPreview = () => {
         >
           <div className="space-y-3">
             <p>
-              This is a demonstration of the <strong>ODD WARS Paper Sheet Modal</strong>.
+              This is a demonstration of the <strong>ODD WAR Paper Sheet Modal</strong>.
             </p>
             <p className="text-xs text-[#5C6069] leading-relaxed">
               It matches the warm cream notebook aesthetic with graphite text, a subtle pencil-line header, 

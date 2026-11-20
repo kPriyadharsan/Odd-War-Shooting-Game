@@ -92,7 +92,7 @@ export const matchService = {
     const matchData = {
       matchId,
       roomCode: cleanCode,
-      roomName: room.name || 'Odd Wars Battle',
+      roomName: room.name || 'Odd War Battle',
       isPrivate: Boolean(room.isPrivate),
       paperStyle: room.paperStyle || room.gameState?.paperStyle || 'classic-blue',
       bookPageCount: room.bookPageCount || 100,

@@ -3,7 +3,7 @@ process.env.PORT = '5088';
 process.env.NODE_ENV = 'test';
 
 async function runTests() {
-  console.log('--- STARTING ODD WARS INTEGRATION & LIFECYCLE TESTS ---');
+  console.log('--- STARTING ODD WAR INTEGRATION & LIFECYCLE TESTS ---');
 
   const { startServer } = await import('./src/server.js');
   const { server } = await startServer(5088);

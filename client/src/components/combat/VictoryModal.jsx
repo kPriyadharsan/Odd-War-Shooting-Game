@@ -46,7 +46,7 @@ export const VictoryModal = ({
             </motion.div>
 
             <span className="font-mono text-xs uppercase tracking-widest text-[#8C929D]">
-              MATCH COMPLETE • ODD WARS CHAMPION
+              MATCH COMPLETE • ODD WAR CHAMPION
             </span>
 
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#242730] mt-1 flex items-center justify-center gap-2">

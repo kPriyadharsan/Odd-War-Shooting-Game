@@ -1,5 +1,5 @@
 /**
- * ODD WARS Battlefield State & Types (Task 07)
+ * ODD WAR Battlefield State & Types (Task 07)
  * Defines the structural row placeholders, row identifiers (1, 3, 5, 7, 9),
  * and territory layout helpers for the notebook battlefield.
  */

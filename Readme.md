@@ -1,4 +1,4 @@
-# ODD WARS — Real-Time Multiplayer Online Game
+# ODD WAR — Real-Time Multiplayer Online Game
 
 ![Architecture](https://img.shields.io/badge/Architecture-Modular%20Full--Stack-blue)
 ![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite%20%2B%20TailwindCSS-61DAFB)
@@ -6,14 +6,14 @@
 ![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-black)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-ODD WARS is an online multiplayer 2–4 player real-time game built with a modern full-stack architecture. The platform is designed from the ground up for server-authoritative game logic, low-latency real-time synchronization, modular matchmaking, and horizontal multi-instance scalability via Redis.
+ODD WAR is an online multiplayer 2–4 player real-time game built with a modern full-stack architecture. The platform is designed from the ground up for server-authoritative game logic, low-latency real-time synchronization, modular matchmaking, and horizontal multi-instance scalability via Redis.
 
 ---
 
 ## 1. Project Directory Structure
 
 ```text
-odd-wars/
+odd-war/
 ├── client/                     # Frontend client (React + Vite + Tailwind CSS)
 │   ├── public/                 # Static assets
 │   ├── src/

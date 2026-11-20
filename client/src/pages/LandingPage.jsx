@@ -72,7 +72,7 @@ export const LandingPage = () => {
 
               {/* Title */}
               <h1 className="text-4xl xs:text-5xl sm:text-7xl font-handwriting font-bold tracking-tight text-[#23252A] leading-none mb-3">
-                ODD WARS
+                ODD WAR
               </h1>
 
               {/* Tagline */}
@@ -243,7 +243,7 @@ export const LandingPage = () => {
             <div className="md:col-span-6 space-y-3">
               <div className="flex items-center space-x-2">
                 <span className="font-handwriting font-bold text-2xl text-[#23252A]">
-                  ODD WARS
+                  ODD WAR
                 </span>
                 <span className="text-[#8E949F]">&bull;</span>
                 <span className="font-handwriting text-base text-[#2B68B4]">
@@ -329,7 +329,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="pt-6 border-t border-[#D5CFC3]/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-[#8E949F]">
-            <div>&copy; {new Date().getFullYear()} ODD WARS. Built for real multiplayer fun.</div>
+            <div>&copy; {new Date().getFullYear()} ODD WAR. Built for real multiplayer fun.</div>
             <div className="flex items-center gap-3">
               <span>2–4 PLAYERS</span>
               <span>&bull;</span>

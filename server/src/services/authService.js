@@ -17,17 +17,13 @@ const signPayload = (payloadString) => {
   return crypto.createHmac('sha256', config.jwtSecret).update(payloadString).digest('base64url');
 };
 
-const CANONICAL_PRODUCTION_FRONTENDS = [
-  'https://odd-wars.vercel.app',
-  'https://odd-war.vercel.app'
-];
-const CANONICAL_DEFAULT_FRONTEND = 'https://odd-wars.vercel.app';
+const CANONICAL_PRODUCTION_FRONTEND = 'https://odd-war.vercel.app';
 const CANONICAL_LOCAL_FRONTEND = 'http://localhost:5173';
 
 /**
  * Dynamically resolves the frontend origin where the client application is hosted.
- * Accurately supports canonical production domains (odd-wars.vercel.app & odd-war.vercel.app)
- * and detects reverse proxy forwarded headers or query origin.
+ * Strictly enforces canonical production domain (https://odd-war.vercel.app) in production
+ * and on Render cloud hosting, preventing any leakage.
  */
 export const resolveFrontendOrigin = (req) => {
   // 1. Explicit CLIENT_URL environment variable (if explicitly configured and not localhost)
@@ -43,7 +39,7 @@ export const resolveFrontendOrigin = (req) => {
   const queryOrigin = req?.query?.origin;
   if (queryOrigin && typeof queryOrigin === 'string') {
     const cleanQueryOrigin = queryOrigin.trim().replace(/\/+$/, '');
-    if (CANONICAL_PRODUCTION_FRONTENDS.includes(cleanQueryOrigin)) {
+    if (cleanQueryOrigin === CANONICAL_PRODUCTION_FRONTEND) {
       return cleanQueryOrigin;
     }
     // Only permit localhost when running purely in local development (not on Render)
@@ -57,9 +53,6 @@ export const resolveFrontendOrigin = (req) => {
     const rawForwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
     if (rawForwardedHost) {
       const forwardedHost = rawForwardedHost.split(',')[0].trim();
-      if (forwardedHost === 'odd-wars.vercel.app') {
-        return 'https://odd-wars.vercel.app';
-      }
       if (forwardedHost === 'odd-war.vercel.app') {
         return 'https://odd-war.vercel.app';
       }
@@ -67,7 +60,6 @@ export const resolveFrontendOrigin = (req) => {
 
     const referer = req.get ? req.get('referer') : req.headers?.['referer'];
     if (referer) {
-      if (referer.includes('odd-wars.vercel.app')) return 'https://odd-wars.vercel.app';
       if (referer.includes('odd-war.vercel.app')) return 'https://odd-war.vercel.app';
       if (referer.includes('localhost') && !isHostedOnRender) {
         try {
@@ -79,9 +71,9 @@ export const resolveFrontendOrigin = (req) => {
     }
   }
 
-  // 5. In production or on Render: default to canonical production domain
+  // 5. In production or on Render: default to canonical production domain (odd-war.vercel.app)
   if (isHostedOnRender) {
-    return CANONICAL_DEFAULT_FRONTEND;
+    return CANONICAL_PRODUCTION_FRONTEND;
   }
 
   return CANONICAL_LOCAL_FRONTEND;
