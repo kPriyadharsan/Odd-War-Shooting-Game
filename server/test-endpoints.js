@@ -213,12 +213,16 @@ async function runTests() {
 
     // 11. Test Authoritative Manual Drawing Submission (POST /api/rooms/:code/drawing)
     console.log('\n[TEST 11] Testing Authoritative Drawing Submission (POST /api/rooms/:code/drawing)...');
+    const activePlayerIdForDrawing = bodyBook.data.room.gameState?.activePlayerId || hostPlayerId;
+    const targetRowForDrawing = bodyBook.data.outcome?.targetRow || 1;
+    console.log(`  - Submitting drawing for active player "${activePlayerIdForDrawing}" on eligible Row ${targetRowForDrawing}`);
+
     const resDrawing = await fetch(`${BASE}/api/rooms/${createdRoomCode}/drawing`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        playerId: 'guest_warrior_2', // Active player now is guest_warrior_2
-        rowNumber: 1,
+        playerId: activePlayerIdForDrawing,
+        rowNumber: targetRowForDrawing,
         stage: 'HEAD',
         strokeData: {
           strokes: [
@@ -238,12 +242,12 @@ async function runTests() {
     if (resDrawing.status !== 200 || !bodyDrawing.success) {
       throw new Error(`TEST 11 Failed: ${JSON.stringify(bodyDrawing)}`);
     }
-    const guestPlayer = bodyDrawing.data.room.players.find(p => p.playerId === 'guest_warrior_2');
-    const guestRow1 = guestPlayer.territory.rowStates.find(r => r.rowNumber === 1);
-    if (!guestRow1 || !guestRow1.drawings || !guestRow1.drawings.HEAD) {
+    const drawnPlayer = bodyDrawing.data.room.players.find(p => p.playerId === activePlayerIdForDrawing);
+    const drawnRow = drawnPlayer.territory.rowStates.find(r => r.rowNumber === targetRowForDrawing);
+    if (!drawnRow || !drawnRow.drawings || !drawnRow.drawings.HEAD) {
       throw new Error('Drawing strokes not saved in player row state!');
     }
-    console.log(`✓ TEST 11 PASSED: Guest drawing saved to Row 1 HEAD! Next stage: "${guestRow1.currentStage}"`);
+    console.log(`✓ TEST 11 PASSED: Drawing saved to Row ${targetRowForDrawing} HEAD! Next stage: "${drawnRow.currentStage}"`);
 
     console.log('\n======================================================');
     console.log(' ALL 11 INTEGRATION TESTS PASSED PERFECTLY (100% OK) ');

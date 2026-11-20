@@ -255,6 +255,14 @@ export const registerRoomHandlers = (io, socket) => {
         room: startedRoom,
         message: 'All warriors ready! Game is starting...'
       });
+      io.to(cleanCode).emit('MATCH_STARTED', {
+        room: startedRoom,
+        message: 'All warriors ready! Game is starting...'
+      });
+      io.to(cleanCode).emit('room:started', {
+        room: startedRoom,
+        message: 'All warriors ready! Game is starting...'
+      });
 
       if (typeof callback === 'function') {
         callback({ success: true, room: startedRoom });

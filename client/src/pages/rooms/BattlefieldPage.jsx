@@ -439,16 +439,6 @@ export const BattlefieldPage = () => {
     drawings: {}
   };
 
-  // Check if home player currently has an eligible row from an odd book landing
-  const eligibleRowNumber = useMemo(() => {
-    if (lastOutcome?.isOdd && lastOutcome?.targetRow) {
-      if (lastOutcome.playerId === currentPlayer.playerId) {
-        return lastOutcome.targetRow;
-      }
-    }
-    return null;
-  }, [lastOutcome, currentPlayer.playerId]);
-
   // Active player information
   const activePlayerId = room?.gameState?.activePlayerId || room?.players?.[0]?.playerId;
   const isMyTurn = activePlayerId === currentPlayer.playerId;
@@ -456,6 +446,48 @@ export const BattlefieldPage = () => {
     nickname: 'Warrior',
     assignedShade: { hex: '#2B68B4' }
   };
+
+  const currentTurn = room?.gameState?.currentTurn || null;
+  const eligibleAction = currentTurn?.eligibleAction || null;
+
+  // Check if home player currently has an eligible row from an odd book landing
+  // Survives page refreshes and socket reconnections by inspecting canonical currentTurn first
+  const eligibleRowNumber = useMemo(() => {
+    if (
+      currentTurn?.playerId === currentPlayer.playerId &&
+      room?.gameState?.turnPhase === 'AWAITING_ACTION'
+    ) {
+      if (currentTurn.eligibleAction?.targetRow) {
+        return currentTurn.eligibleAction.targetRow;
+      }
+      if (currentTurn.bookOutcome?.isOdd && currentTurn.bookOutcome?.targetRow) {
+        return currentTurn.bookOutcome.targetRow;
+      }
+    }
+
+    if (lastOutcome?.isOdd && lastOutcome?.targetRow) {
+      if (lastOutcome.playerId === currentPlayer.playerId) {
+        return lastOutcome.targetRow;
+      }
+    }
+    return null;
+  }, [room?.gameState?.turnPhase, currentTurn, lastOutcome, currentPlayer.playerId]);
+
+  const eligibleRowData = homeRowStates.find((r) => r.rowNumber === eligibleRowNumber) || null;
+  const isEligibleRowArmed = Boolean(
+    eligibleRowData?.drawings?.HEAD &&
+      eligibleRowData?.drawings?.BODY &&
+      eligibleRowData?.drawings?.GUN &&
+      eligibleRowData?.bulletCount > 0 &&
+      !eligibleRowData?.isEliminated
+  );
+
+  const canAttackOpponents = Boolean(
+    isMyTurn &&
+      room?.status === 'PLAYING' &&
+      room?.gameState?.turnPhase === 'AWAITING_ACTION' &&
+      (eligibleAction?.canAttack || isEligibleRowArmed || (selectedRowData?.bulletCount > 0 && selectedRowNumber === eligibleRowNumber))
+  );
 
   // Part 2: Selected Paper Style (Server-authoritative & synchronized)
   const paperStyleId = room?.gameState?.paperStyle || room?.paperStyle || DEFAULT_PAPER_STYLE;
@@ -617,6 +649,7 @@ export const BattlefieldPage = () => {
     setCombatError(null);
 
     const actionId = `shot_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const firingRow = eligibleRowNumber || selectedRowNumber || 1;
 
     try {
       soundEffects.playGunshot();
@@ -627,7 +660,7 @@ export const BattlefieldPage = () => {
         {
           roomCode: room.code,
           playerId: currentPlayer.playerId,
-          attackerRow: selectedRowNumber,
+          attackerRow: firingRow,
           targetPlayerId: selectedTarget.playerId,
           targetRow: selectedTarget.rowNumber,
           actionId
@@ -643,7 +676,7 @@ export const BattlefieldPage = () => {
       const result = await roomApi.fireCombatShot({
         code: room.code,
         playerId: currentPlayer.playerId,
-        attackerRow: selectedRowNumber,
+        attackerRow: firingRow,
         targetPlayerId: selectedTarget.playerId,
         targetRow: selectedTarget.rowNumber,
         actionId
@@ -811,14 +844,28 @@ export const BattlefieldPage = () => {
 
               {/* ACTION BUTTON: DRAW ON ROW (Visible if odd row eligible) */}
               {isMyTurn && eligibleRowNumber !== null && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>DRAW ON ROW {eligibleRowNumber}</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {canAttackOpponents && (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#CE4242]/10 border border-[#CE4242]/30 text-[10px] font-mono text-[#CE4242] font-bold animate-pulse">
+                      <Target className="w-3 h-3 text-[#CE4242]" />
+                      Tap opponent row to attack
+                    </span>
+                  )}
+                  {(!eligibleAction || eligibleAction.type !== 'ATTACK') && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>
+                        {eligibleAction?.type === 'CHOICE_LOAD_OR_ATTACK'
+                          ? `LOAD BULLET ON ROW ${eligibleRowNumber}`
+                          : `DRAW ON ROW ${eligibleRowNumber}`}
+                      </span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -908,7 +955,7 @@ export const BattlefieldPage = () => {
             onSelectRow={handleSelectRow}
             onOpenDrawing={handleOpenDrawingModal}
             eligibleRowNumber={eligibleRowNumber}
-            isTargetableOpponent={isAttackerArmed}
+            isTargetableOpponent={canAttackOpponents}
             selectedTarget={selectedTarget}
             onSelectTarget={handleSelectTarget}
           />
