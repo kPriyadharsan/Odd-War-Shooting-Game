@@ -2,16 +2,25 @@ import { loadProfileDraft } from './gameStore.js';
 
 const SESSION_KEY = 'odd_wars_player_session_id';
 
+let memorySessionId = null;
+
 /**
  * Returns a persistent temporary player identity for room management.
- * In Task 05, this uses the local profile draft and a persistent browser session ID.
- * Replaceable by Google OAuth credentials in final integration.
+ * Safe for Incognito / Private Browsing where localStorage may be restricted.
  */
 export const getPlayerSession = () => {
-  let sessionId = localStorage.getItem(SESSION_KEY);
-  if (!sessionId) {
-    sessionId = `p_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
-    localStorage.setItem(SESSION_KEY, sessionId);
+  let sessionId = null;
+  try {
+    sessionId = localStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      sessionId = `p_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+      localStorage.setItem(SESSION_KEY, sessionId);
+    }
+  } catch (err) {
+    if (!memorySessionId) {
+      memorySessionId = `p_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+    }
+    sessionId = memorySessionId;
   }
 
   const profile = loadProfileDraft();

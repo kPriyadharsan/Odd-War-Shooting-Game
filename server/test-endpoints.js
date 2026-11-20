@@ -1,13 +1,11 @@
-import http from 'http';
-import { startServer } from './src/server.js';
-
-// Run isolated test on port 5088
+// Set test environment flags BEFORE importing server module
 process.env.PORT = '5088';
 process.env.NODE_ENV = 'test';
 
 async function runTests() {
   console.log('--- STARTING ODD WARS INTEGRATION & LIFECYCLE TESTS ---');
 
+  const { startServer } = await import('./src/server.js');
   const { server } = await startServer(5088);
   const BASE = 'http://localhost:5088';
 
@@ -57,6 +55,30 @@ async function runTests() {
       throw new Error(`TEST 2 Failed: ${JSON.stringify(body2)}`);
     }
     console.log(`✓ TEST 2 PASSED: Room "${body2.data.room.name}" created with code "${body2.data.room.code}"`);
+
+    // 2b. POST /api/rooms/private (Private Room Creation)
+    console.log('\n[TEST 2b] Testing POST /api/rooms/private (Private Room Creation)...');
+    const resPrivate = await fetch(`${BASE}/api/rooms/private`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Secret Chamber',
+        password: 'oddsecretpass',
+        maxPlayers: 4,
+        bookPageCount: 100,
+        player: {
+          playerId: 'stealth_host',
+          nickname: 'ShadowLeader',
+          primaryColor: 'BLACK'
+        }
+      })
+    });
+    console.log('TEST 2b Status:', resPrivate.status);
+    const bodyPrivate = await resPrivate.json();
+    if (resPrivate.status !== 201 || !bodyPrivate.success || !bodyPrivate.data.room.isPrivate) {
+      throw new Error(`TEST 2b Failed: ${JSON.stringify(bodyPrivate)}`);
+    }
+    console.log(`✓ TEST 2b PASSED: Private room created with code "${bodyPrivate.data.room.code}", isPrivate: ${bodyPrivate.data.room.isPrivate}`);
 
     // 3. POST /rooms/public without /api prefix
     console.log('\n[TEST 3] Testing POST /rooms/public (fallback root mount)...');

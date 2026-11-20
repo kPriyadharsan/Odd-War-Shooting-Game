@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Globe2,
@@ -24,10 +24,12 @@ import { getColorFamily } from '../../config/colors.js';
 
 export const CreateRoomPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const player = getPlayerSession();
   const color = getColorFamily(player.primaryColor);
 
-  const [roomType, setRoomType] = useState('public'); // 'public' | 'private'
+  const initialType = searchParams.get('type') === 'private' ? 'private' : 'public';
+  const [roomType, setRoomType] = useState(initialType); // 'public' | 'private'
   const [name, setName] = useState(`${player.nickname}'s Arena`);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

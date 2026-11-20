@@ -101,11 +101,7 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-// Auto-start only when executed directly as entrypoint
-const isDirectEntry = process.argv[1] && (
-  fileURLToPath(import.meta.url).replace(/\\/g, '/') === process.argv[1].replace(/\\/g, '/')
-);
-
-if (isDirectEntry && process.env.NODE_ENV !== 'test') {
+// Auto-start server unless running in test environment
+if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
