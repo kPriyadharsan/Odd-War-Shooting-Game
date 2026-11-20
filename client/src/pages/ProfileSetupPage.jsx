@@ -539,40 +539,6 @@ export const ProfileSetupPage = () => {
             shrink-0
           "
         >
-          <div className="min-w-0">
-            <div className="
-              flex items-center gap-2
-              text-[10px] sm:text-xs
-              font-semibold tracking-[0.16em]
-              text-[#8B8172] uppercase mb-1
-            ">
-              <Pencil className="w-3 h-3" />
-              ODD WAR
-              <span className="w-1 h-1 rounded-full bg-[#B6AA97]" />
-              PLAYER SETUP
-            </div>
-
-            <h1 className="
-              text-xl xs:text-2xl sm:text-3xl lg:text-4xl
-              font-bold tracking-tight
-              text-[#23252A] leading-tight
-            ">
-              {isEditingExisting
-                ? 'Edit your profile'
-                : 'Create your identity'}
-            </h1>
-
-            <p className="
-              text-[11px] sm:text-sm
-              text-[#77736C] mt-1
-              leading-relaxed
-            ">
-              {isEditingExisting
-                ? 'Update your player details.'
-                : 'Set up your player before entering the battlefield.'}
-            </p>
-          </div>
-
           <div className="shrink-0">
             <div className="lg:hidden">
               <CharacterPopupPreview

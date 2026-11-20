@@ -1,12 +1,16 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { getColorFamily } from '../../config/colors.js';
 
 /**
  * Reusable 2D Hand-Drawn Pencil Character SVG
  */
-export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full' }) => (
+export const CharacterSvg = ({
+  colorHex = '#2563eb',
+  className = 'w-full h-full'
+}) => (
   <svg
     viewBox="0 0 200 240"
     className={`overflow-visible select-none ${className}`}
@@ -25,8 +29,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       strokeDasharray="4 3"
     />
 
-    {/* 1. Helmet / Headgear */}
-    {/* Head base */}
+    {/* Helmet / Headgear */}
     <circle
       cx="100"
       cy="65"
@@ -43,6 +46,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       strokeWidth="4.5"
       strokeLinecap="round"
     />
+
     <path
       d="M 80 50 C 90 44, 110 44, 120 50"
       stroke={colorHex}
@@ -61,6 +65,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       strokeWidth="2.5"
       fill={colorHex}
     />
+
     {/* Visor Glint */}
     <line
       x1="88"
@@ -80,8 +85,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       strokeLinecap="round"
     />
 
-    {/* 2. Body / Torso */}
-    {/* Spine / Chest */}
+    {/* Body / Torso */}
     <line
       x1="100"
       y1="91"
@@ -99,7 +103,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       fill="#FFFDF9"
     />
 
-    {/* Color Chest Insignia (Shield) */}
+    {/* Color Chest Insignia */}
     <path
       d="M 95 108 L 105 108 L 105 118 L 100 124 L 95 118 Z"
       fill={colorHex}
@@ -119,7 +123,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       fill="#EFE8DA"
     />
 
-    {/* 3. Left Arm & Weapon (Pencil Blaster) */}
+    {/* Left Arm */}
     <path
       d="M 86 106 L 68 124 L 54 118"
       stroke="#23252A"
@@ -127,7 +131,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       strokeLinecap="round"
     />
 
-    {/* Blaster Weapon in Hand */}
+    {/* Blaster Weapon */}
     <g transform="translate(32, 98)">
       <rect
         x="0"
@@ -139,6 +143,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
         strokeWidth="2.5"
         fill="#FFFDF9"
       />
+
       <rect
         x="6"
         y="12"
@@ -147,12 +152,14 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
         rx="1"
         fill={colorHex}
       />
+
       <path
         d="M 16 18 L 14 26"
         stroke="#23252A"
         strokeWidth="2.5"
         strokeLinecap="round"
       />
+
       <line
         x1="0"
         y1="14"
@@ -164,22 +171,24 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
       />
     </g>
 
-    {/* 4. Right Arm */}
+    {/* Right Arm */}
     <path
       d="M 114 106 L 132 120 L 128 134"
       stroke="#23252A"
       strokeWidth="3"
       strokeLinecap="round"
     />
+
     <circle cx="128" cy="135" r="4" fill="#23252A" />
 
-    {/* 5. Legs & Pencil Boots */}
+    {/* Legs */}
     <path
       d="M 94 148 L 84 186 L 74 190"
       stroke="#23252A"
       strokeWidth="3"
       strokeLinecap="round"
     />
+
     <path
       d="M 106 148 L 116 186 L 126 190"
       stroke="#23252A"
@@ -192,6 +201,7 @@ export const CharacterSvg = ({ colorHex = '#2563eb', className = 'w-full h-full'
     <circle cx="124" cy="188" r="3.5" fill={colorHex} />
   </svg>
 );
+
 
 /**
  * Compact Mobile On-Screen Popup Live Character Preview
@@ -209,26 +219,35 @@ export const CharacterPopupPreview = ({
     <motion.div
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`relative px-2 py-1 rounded-xl border-2 bg-[#FCFAF3] shadow-sketch-sm flex items-center gap-2 select-none cursor-pointer transition-all ${className}`}
+      className={`fixed z-[99999] px-2 py-1 rounded-xl border-2 bg-[#FCFAF3] shadow-sketch-sm flex items-center gap-2 select-none cursor-pointer transition-all ${className}`}
       style={{
         borderColor: color.hex,
-        boxShadow: `0 0 10px ${color.hex}30`
+        boxShadow: `0 0 10px ${color.hex}30`,
+
+        // MANUAL POSITION CONTROLS
+        // Preserves your original position on larger screens.
+        // Adjusts only when the viewport is too narrow.
+        top: '100px',
+        left: 'min(270px, calc(100vw - 145px))'
       }}
     >
-      {/* Live Badge */}
+      {/* Preview Badge */}
       <div
         className="absolute -top-2 left-3 px-1.5 py-0.2 rounded-full text-[8px] font-mono font-bold text-white uppercase tracking-wider shadow-sm flex items-center gap-0.5"
         style={{ backgroundColor: color.hex }}
       >
-        <Sparkles className="w-2 h-2" />
-        <span>LIVE</span>
+        <span>Preview</span>
       </div>
 
-      {/* Mini character SVG */}
+      {/* Mini Character SVG */}
       <motion.div
         className="w-10 h-12 xs:w-11 xs:h-13 flex items-center justify-center shrink-0"
         animate={{ y: [0, -2, 0] }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          ease: 'easeInOut'
+        }}
       >
         <CharacterSvg colorHex={color.hex} />
       </motion.div>
@@ -241,6 +260,7 @@ export const CharacterPopupPreview = ({
         >
           {color.name}
         </span>
+
         <span className="text-xs font-handwriting font-bold text-[#23252A] truncate max-w-[75px]">
           {displayName}
         </span>
@@ -248,6 +268,7 @@ export const CharacterPopupPreview = ({
     </motion.div>
   );
 };
+
 
 /**
  * Desktop Character Preview Card
@@ -264,29 +285,12 @@ export const CharacterPreview = ({
     <div
       className={`relative w-full max-w-sm mx-auto bg-[#FCFAF3] border-2 border-[#23252A] rounded-2xl p-6 shadow-paper-lg flex flex-col items-center select-none ${className}`}
     >
-      {/* Top washi tape accent */}
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#EFE8DA]/90 border-l border-r border-dashed border-[#D5CFC3] -rotate-1 shadow-sm" />
+      
 
-      {/* Header status */}
-      <div className="w-full flex items-center justify-between text-xs font-mono text-[#5C6069] mb-4 mt-1 border-b border-[#D5CFC3] pb-2">
-        <span className="flex items-center gap-1">
-          <Shield className="w-3.5 h-3.5 text-[#5C6069]" />
-          <span>CLASS: FIGHTER</span>
-        </span>
-        <span
-          className="font-bold uppercase tracking-wider"
-          style={{ color: color.hex }}
-        >
-          {color.name}
-        </span>
-      </div>
-
-      {/* The 2D Hand-Drawn Pencil Character SVG */}
+      {/* Character Preview */}
       <motion.div
         className="relative w-48 h-56 sm:w-56 sm:h-64 my-2 flex items-center justify-center card-ruled rounded-xl border border-dashed border-[#D5CFC3] p-4"
-        animate={{
-          y: [0, -4, 0]
-        }}
+        animate={{ y: [0, -4, 0] }}
         transition={{
           duration: 3,
           repeat: Infinity,
@@ -295,20 +299,22 @@ export const CharacterPreview = ({
       >
         <CharacterSvg colorHex={color.hex} />
 
-        {/* Live preview badge */}
+        {/* Live Preview Badge */}
         <div className="absolute top-2 right-2 text-[10px] font-mono px-2 py-0.5 rounded bg-[#EFE8DA] text-[#5C6069] border border-[#D5CFC3]">
           2D PENCIL RIG
         </div>
       </motion.div>
 
-      {/* Nameplate Notebook Label */}
+      {/* Nameplate */}
       <div className="w-full mt-3 p-3 rounded-xl bg-[#FFFDF9] border border-[#23252A] shadow-sketch-sm text-center">
         <div className="text-[10px] font-mono uppercase tracking-wider text-[#8E949F]">
           CALL-SIGN
         </div>
+
         <div className="text-xl sm:text-2xl font-handwriting font-bold text-[#23252A] truncate">
           {displayName}
         </div>
+
         <div className="text-xs font-mono mt-0.5" style={{ color: color.hex }}>
           {color.name.toUpperCase()} SQUAD
         </div>
