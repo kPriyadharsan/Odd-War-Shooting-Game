@@ -1,7 +1,5 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield } from 'lucide-react';
 import { getColorFamily } from '../../config/colors.js';
 
 /**
@@ -202,12 +200,9 @@ export const CharacterSvg = ({
   </svg>
 );
 
-
 /**
- * Compact Mobile On-Screen Character Preview
- * Now uses absolute positioning within its parent container
- * instead of fixed/viewport-anchored positioning.
- * Parent must have position: relative.
+ * Mobile On-Screen Floating Character Preview Card
+ * Positioned in upper-right area, slightly enlarged for clear visibility.
  */
 export const CharacterPopupPreview = ({
   nickname = 'Warrior',
@@ -220,39 +215,26 @@ export const CharacterPopupPreview = ({
 
   return (
     <motion.div
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className={`
-        absolute z-20
-        top-1 right-0
-        flex items-center gap-2
-        px-2.5 py-1.5
-        rounded-xl border-2
-        bg-[#FCFAF3]
-        shadow-sketch-sm
-        select-none cursor-pointer
-        transition-all
-        ${className}
-      `}
+      className={`relative px-2.5 py-1.5 rounded-xl border-2 bg-[#FCFAF3] shadow-sketch-sm flex items-center gap-2 select-none cursor-pointer transition-all ${className}`}
       style={{
         borderColor: color.hex,
-        boxShadow: `0 2px 12px ${color.hex}30, 1px 1px 0 #D5CFC3`,
-        minWidth: 130,
-        maxWidth: 165,
+        boxShadow: `0 2px 8px ${color.hex}25, 2px 2px 0px #23252A`,
       }}
     >
-      {/* Preview Badge */}
+      {/* Aligned Preview Badge */}
       <div
-        className="absolute -top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold text-white uppercase tracking-wider shadow-sm"
+        className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold text-white uppercase tracking-wider shadow-sm flex items-center gap-0.5"
         style={{ backgroundColor: color.hex }}
       >
-        Preview
+        <span>Preview</span>
       </div>
 
-      {/* Mini Character SVG — slightly bigger */}
+      {/* Enlarged Character Illustration (clearly visible) */}
       <motion.div
         className="w-12 h-14 flex items-center justify-center shrink-0"
-        animate={{ y: [0, -2.5, 0] }}
+        animate={{ y: [0, -2, 0] }}
         transition={{
           duration: 2.5,
           repeat: Infinity,
@@ -262,16 +244,16 @@ export const CharacterPopupPreview = ({
         <CharacterSvg colorHex={color.hex} />
       </motion.div>
 
-      {/* Color & Nickname Info */}
-      <div className="flex flex-col min-w-0 pr-1">
+      {/* Color Name & Nickname Info */}
+      <div className="flex flex-col min-w-0 pr-0.5">
         <span
-          className="text-[9px] font-mono font-bold uppercase tracking-wider truncate max-w-[80px]"
+          className="text-[10px] font-mono font-bold uppercase tracking-wider truncate max-w-[85px] leading-tight"
           style={{ color: color.hex }}
         >
           {color.name}
         </span>
 
-        <span className="text-[13px] font-handwriting font-bold text-[#23252A] truncate max-w-[80px]">
+        <span className="text-xs sm:text-sm font-handwriting font-bold text-[#23252A] truncate max-w-[90px] mt-0.5 leading-tight">
           {displayName}
         </span>
       </div>
@@ -279,9 +261,8 @@ export const CharacterPopupPreview = ({
   );
 };
 
-
 /**
- * Desktop Character Preview Card
+ * Desktop Character Preview Card (lg screens)
  */
 export const CharacterPreview = ({
   nickname = 'Warrior',
@@ -295,7 +276,6 @@ export const CharacterPreview = ({
     <div
       className={`relative w-full max-w-sm mx-auto bg-[#FCFAF3] border-2 border-[#23252A] rounded-2xl p-6 shadow-paper-lg flex flex-col items-center select-none ${className}`}
     >
-
       {/* Character Preview */}
       <motion.div
         className="relative w-48 h-60 sm:w-56 sm:h-64 my-2 flex items-center justify-center card-ruled rounded-xl border border-dashed border-[#D5CFC3] p-4"
