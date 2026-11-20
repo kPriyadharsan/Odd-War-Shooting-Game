@@ -35,7 +35,7 @@ export const ProfileReviewModal = ({
             iconPosition="right"
             onClick={onConfirm}
           >
-            Confirm & Save Draft
+            Confirm & Enter Lobby
           </Button>
         </>
       }

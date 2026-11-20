@@ -13,6 +13,7 @@ import { HowItWorksStepCard } from '../components/landing/HowItWorksStepCard.jsx
 import { MultiplayerFeatureGrid } from '../components/landing/MultiplayerFeatureGrid.jsx';
 import { SoundControls } from '../components/ui/SoundControls.jsx';
 import { soundEffects } from '../services/soundEffects.js';
+import { getPlayerSession } from '../store/playerSession.js';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -20,7 +21,12 @@ export const LandingPage = () => {
 
   const handleStartPlaying = () => {
     soundEffects.playButtonClick();
-    navigate('/profile-setup');
+    const session = getPlayerSession();
+    if (session?.isCustomized) {
+      navigate('/lobby');
+    } else {
+      navigate('/profile-setup');
+    }
   };
 
   const scrollToHowItWorks = () => {
@@ -127,33 +133,57 @@ export const LandingPage = () => {
         <section id="how-it-works" className="mb-20 sm:mb-28 scroll-mt-24">
           <SectionHeading
             badge="01 — Gameplay Mechanics"
-            title="How It Works"
-            subtitle="Three simple turns straight from the pages of your school exercise book."
+            title="How to Play"
+            subtitle="The simple, addictive turn-based rules straight from the pages of your school exercise book."
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <HowItWorksStepCard
               stepNumber="01"
-              title="Pick Your Number"
-              description="Draw a random page number and discover your next move."
-              illustrationType="pick-number"
+              title="Create or Join a Room"
+              description="Open a new public sheet in the community lobby or secure a private arena with a secret password."
+              illustrationType="create-join"
               index={0}
             />
 
             <HowItWorksStepCard
               stepNumber="02"
-              title="Build Your Fighter"
-              description="Complete your character by drawing its head, body, face, and weapon."
-              illustrationType="build-fighter"
+              title="Invite Friends"
+              description="Gather 2 to 4 warriors. Share your 6-character room code with classmates to assemble your squad."
+              illustrationType="invite-friends"
               index={1}
             />
 
             <HowItWorksStepCard
               stepNumber="03"
-              title="Battle Your Friends"
-              description="Load your bullets and eliminate your opponents."
-              illustrationType="battle-friends"
+              title="Open the Magical Book"
+              description="Flip through 100 or 200 ruled notebook pages. Landing on an odd final digit unlocks that row."
+              illustrationType="open-book"
               index={2}
+            />
+
+            <HowItWorksStepCard
+              stepNumber="04"
+              title="Draw Your Character"
+              description="Sketch your fighter stage-by-stage on rows 1, 3, 5, 7, or 9: Head, Body, Gun, and Bullets."
+              illustrationType="draw-character"
+              index={3}
+            />
+
+            <HowItWorksStepCard
+              stepNumber="05"
+              title="Battle Opponents"
+              description="Acquire enemy row targets across the notebook divide and fire authoritative pencil ammunition."
+              illustrationType="battle-opponents"
+              index={4}
+            />
+
+            <HowItWorksStepCard
+              stepNumber="06"
+              title="Last Player Standing"
+              description="Defend your vertical territory, scratch out opposing rows, and claim ultimate classroom victory."
+              illustrationType="last-standing"
+              index={5}
             />
           </div>
         </section>
@@ -207,19 +237,106 @@ export const LandingPage = () => {
         {/* ========================================================= */}
         {/* 5. FOOTER                                                 */}
         {/* ========================================================= */}
-        <footer className="pt-8 pb-12 border-t border-[#D5CFC3] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-[#5C6069]">
-          <div className="flex items-center space-x-2">
-            <span className="font-handwriting font-bold text-lg text-[#23252A]">
-              ODD WARS
-            </span>
-            <span className="text-[#8E949F]">&bull;</span>
-            <span className="font-handwriting text-sm text-[#2B68B4]">
-              The Notebook Game. Reimagined.
-            </span>
+        <footer className="pt-10 pb-14 border-t border-[#D5CFC3] text-xs font-sans text-[#5C6069]">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-8">
+            {/* Brand & About */}
+            <div className="md:col-span-6 space-y-3">
+              <div className="flex items-center space-x-2">
+                <span className="font-handwriting font-bold text-2xl text-[#23252A]">
+                  ODD WARS
+                </span>
+                <span className="text-[#8E949F]">&bull;</span>
+                <span className="font-handwriting text-base text-[#2B68B4]">
+                  The Notebook Game. Reimagined.
+                </span>
+              </div>
+              <p className="text-xs text-[#5C6069] leading-relaxed max-w-md">
+                The authentic digital rebirth of nostalgic school exercise book games. Challenge classmates, sketch warriors on ruled margins, flip the magical book of fate, and dominate 2–4 player paper battlefields in real time.
+              </p>
+            </div>
+
+            {/* Navigation links */}
+            <div className="md:col-span-3 space-y-2">
+              <div className="font-mono uppercase tracking-wider text-[11px] font-bold text-[#23252A]">
+                Game Navigation
+              </div>
+              <ul className="space-y-1.5 text-xs">
+                <li>
+                  <button
+                    type="button"
+                    onClick={scrollToHowItWorks}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    How to Play
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/lobby')}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    Multiplayer Game Lobby
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/profile-setup')}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    Warrior Profile Setup
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Arenas & Modes */}
+            <div className="md:col-span-3 space-y-2">
+              <div className="font-mono uppercase tracking-wider text-[11px] font-bold text-[#23252A]">
+                Battle Arenas
+              </div>
+              <ul className="space-y-1.5 text-xs">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/rooms/public')}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    Public Room Browser
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/rooms/create')}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    Host an Arena
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/rooms/join')}
+                    className="hover:text-[#23252A] transition-colors cursor-pointer"
+                  >
+                    Join with Secret Passcode
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div className="font-mono text-[11px] text-[#8E949F]">
-            &copy; {new Date().getFullYear()} ODD WARS. All rights reserved.
+          <div className="pt-6 border-t border-[#D5CFC3]/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-[#8E949F]">
+            <div>&copy; {new Date().getFullYear()} ODD WARS. Built for real multiplayer fun.</div>
+            <div className="flex items-center gap-3">
+              <span>2–4 PLAYERS</span>
+              <span>&bull;</span>
+              <span>AUTHENTIC NOTEBOOK RULES</span>
+              <span>&bull;</span>
+              <span className="text-[#2E8557]">30Hz TICK</span>
+            </div>
           </div>
         </footer>
       </div>

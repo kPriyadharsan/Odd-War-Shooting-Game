@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { User, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
 import {
@@ -17,6 +18,7 @@ import { COLOR_FAMILIES } from '../config/colors.js';
 import { soundEffects } from '../services/soundEffects.js';
 
 export const ProfileSetupPage = () => {
+  const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
 
   // Load existing draft if present
@@ -58,7 +60,7 @@ export const ProfileSetupPage = () => {
   const handleConfirmReview = () => {
     soundEffects.playMagicShimmer();
     setIsReviewOpen(false);
-    setSaveSuccessMessage(`Warrior "${validation.trimmed}" is ready for battle in ${colorFamily} squad!`);
+    navigate('/lobby');
   };
 
   // Quick random generator for fun
@@ -112,10 +114,10 @@ export const ProfileSetupPage = () => {
               </span>
               <button
                 type="button"
-                onClick={() => window.location.href = '/rooms'}
+                onClick={() => navigate('/lobby')}
                 className="px-3 py-1 rounded-lg bg-[#23252A] text-white text-xs font-sans font-medium hover:bg-[#2E8557] transition-colors cursor-pointer"
               >
-                Proceed to Rooms &rarr;
+                Proceed to Lobby &rarr;
               </button>
             </div>
           </motion.div>

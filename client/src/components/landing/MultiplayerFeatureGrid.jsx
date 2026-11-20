@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Globe2, Lock, Palette, Zap } from 'lucide-react';
+import { Users, Globe2, Lock, Palette, Zap, Pencil } from 'lucide-react';
 import { Card } from '../ui/Card.jsx';
 import { PlayerColorIndicator, PLAYER_COLORS } from '../ui/PlayerColorIndicator.jsx';
 
@@ -11,37 +11,44 @@ export const MultiplayerFeatureGrid = () => {
     {
       icon: Users,
       iconColor: 'text-[#2B68B4]',
-      badge: 'Lobby Limit',
-      title: '2–4 Players Per Match',
-      description: 'Intense free-for-all paper skirmishes tuned for fast, chaotic, and competitive rounds.'
+      badge: '2–4 Players',
+      title: 'Multiplayer Skirmishes',
+      description: 'Intense free-for-all paper skirmishes tuned for 2, 3, or 4 players in fast, competitive rounds.'
     },
     {
       icon: Globe2,
       iconColor: 'text-[#2E8557]',
-      badge: 'Fast Queue',
-      title: 'Public Matchmaking',
-      description: 'Jump directly into open battle sheets with other students and players worldwide.'
-    },
-    {
-      icon: Lock,
-      iconColor: 'text-[#CE4242]',
-      badge: 'Secret Codes',
-      title: 'Private Password Rooms',
-      description: 'Generate a custom room code, set a pencil passcode, and duel exclusively with your friends.'
+      badge: 'Open & Secret',
+      title: 'Public & Private Rooms',
+      description: 'Hop into open community battle sheets or lock a private notebook page with your own password.'
     },
     {
       icon: Zap,
       iconColor: 'text-[#D59926]',
-      badge: 'Authoritative',
-      title: 'Real-Time Battles',
-      description: 'Low-latency Socket.IO simulation loop ensures every bullet and dodge registers precisely.'
+      badge: '30Hz Sync',
+      title: 'Real-Time Multiplayer',
+      description: 'Authoritative Socket.IO engine synchronizes every page flip, pencil stroke, and combat shot instantly.'
+    },
+    {
+      icon: Palette,
+      iconColor: 'text-[#8E44AD]',
+      badge: '5 Squads',
+      title: 'Custom Player Colors',
+      description: 'Choose from Red, Green, Blue, Yellow, or Black color families with automatic unique room shades.'
+    },
+    {
+      icon: Pencil,
+      iconColor: 'text-[#CE4242]',
+      badge: 'Hand-Drawn',
+      title: 'Character Battles',
+      description: 'Sketch your warrior stage by stage with natural pencil graphite strokes and eliminate enemy rows.'
     }
   ];
 
   return (
     <div className="space-y-6">
-      {/* 4 Feature cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* 5 Feature cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
         {features.map((feat, idx) => {
           const Icon = feat.icon;
           return (

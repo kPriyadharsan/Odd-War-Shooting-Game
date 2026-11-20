@@ -9,7 +9,7 @@ export const Navbar = () => {
 
   const isHome = location.pathname === '/';
   const isProfile = location.pathname === '/profile-setup';
-  const isRooms = location.pathname.startsWith('/rooms');
+  const isLobby = location.pathname === '/lobby' || location.pathname.startsWith('/rooms');
   const isDesignSystem = location.pathname === '/design-system';
 
   const handleHowToPlay = (e) => {
@@ -53,15 +53,15 @@ export const Navbar = () => {
             </Link>
 
             <Link
-              to="/rooms"
+              to="/lobby"
               className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
-                isRooms
+                isLobby
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
                   : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Rooms</span>
+              <span>Lobby</span>
             </Link>
 
             <Link

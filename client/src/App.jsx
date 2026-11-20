@@ -31,6 +31,7 @@ export function App() {
           <Route path="profile-setup" element={<ProfileSetupPage />} />
 
           {/* 3. Game Lobby & Room Management */}
+          <Route path="lobby" element={<RoomsDashboard />} />
           <Route path="rooms" element={<RoomsDashboard />} />
           <Route path="rooms/public" element={<PublicRoomsPage />} />
           <Route path="rooms/create" element={<CreateRoomPage />} />
