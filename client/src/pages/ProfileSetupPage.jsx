@@ -510,72 +510,83 @@ export const ProfileSetupPage = () => {
     <NotebookBackground
       showMargin={false}
       className="
-        h-[100dvh] max-h-[100dvh]
-        overflow-hidden
+        h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)]
+        overflow-x-hidden overflow-y-hidden
         flex flex-col
-        py-0 sm:py-6 lg:py-10
+        p-2 sm:p-6 lg:p-10
         lg:min-h-[100dvh] lg:h-auto lg:max-h-none
-        lg:overflow-x-hidden
+        lg:overflow-visible
       "
     >
-
       <div
         className="
           w-full max-w-6xl mx-auto
-          h-full min-h-0
-          px-2.5 sm:px-6 lg:px-8
-          flex-1 flex flex-col
-          lg:h-auto lg:min-h-full
+          h-full flex-1 flex flex-col justify-between
+          overflow-x-hidden overflow-y-hidden
+          lg:h-auto lg:overflow-visible
         "
         style={{ fontFamily: FONT_STACK }}
       >
-
         {/* ============================================ */}
         {/* HEADER */}
         {/* ============================================ */}
-
         <header
           className="
-            relative
-            flex items-center justify-between gap-3
-            h-0 min-h-0 p-0 m-0
-            shrink-0 overflow-visible
-            lg:h-auto lg:min-h-0 lg:pb-5
+            flex items-center justify-between
+            pb-1 sm:pb-3 lg:pb-5
+            shrink-0
           "
         >
-          <div className="shrink-0">
-            <div className="lg:hidden">
-              <CharacterPopupPreview
-                nickname={nickname}
-                colorFamily={colorFamily}
-              />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-[#23252A] text-white flex items-center justify-center shadow-sketch-sm">
+              <Pencil className="w-3.5 h-3.5 text-[#F8F4EB]" />
             </div>
+            <div>
+              <span className="font-handwriting font-bold text-lg sm:text-xl text-[#23252A] block leading-tight">
+                ODD WAR
+              </span>
+              <span className="text-[10px] font-mono text-[#77736C] hidden sm:block">
+                Choose your nickname, color, and birth date
+              </span>
+            </div>
+            {isAuthenticated && user?.email && (
+              <span className="text-[10px] font-mono text-[#278052] bg-[#EAF5ED] px-2 py-0.5 rounded-full flex items-center gap-1 sm:hidden">
+                <ShieldCheck className="w-3 h-3" />
+                Connected
+              </span>
+            )}
+          </div>
 
-            <div className="
-              hidden lg:flex items-center gap-2
-              px-3 py-2 rounded-full
-              border border-[#D5CFC3]
-              bg-[#FAF6EC]
-              text-xs font-medium text-[#5C6069]
-            ">
-              <Shield className="w-3.5 h-3.5" />
-              Player identity
-            </div>
+          {/* Reserved spacer on mobile so floating preview badge doesn't overlap header content */}
+          <div className="w-36 h-9 shrink-0 lg:hidden">
+            <CharacterPopupPreview
+              nickname={nickname}
+              colorFamily={colorFamily}
+            />
+          </div>
+
+          <div className="
+            hidden lg:flex items-center gap-2
+            px-3 py-2 rounded-full
+            border border-[#D5CFC3]
+            bg-[#FAF6EC]
+            text-xs font-medium text-[#5C6069]
+          ">
+            <Shield className="w-3.5 h-3.5" />
+            Player identity setup
           </div>
         </header>
 
-
         {/* ============================================ */}
-        {/* ACCOUNT INFORMATION */}
+        {/* ACCOUNT INFORMATION (DESKTOP) */}
         {/* ============================================ */}
-
         {isAuthenticated && user && (
           <motion.div
             initial={shouldReduceMotion ? false : { opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             className="
-              flex items-center gap-3
-              p-2 sm:p-3 mb-2 sm:mb-4
+              hidden sm:flex items-center gap-3
+              p-2.5 sm:p-3 mb-3
               rounded-xl
               bg-[#FAF6EC]
               border border-[#DED7C9]
@@ -587,13 +598,13 @@ export const ProfileSetupPage = () => {
                 src={user.avatarUrl}
                 alt={user.displayName || 'Google account'}
                 className="
-                  w-10 h-10 rounded-full
+                  w-9 h-9 rounded-full
                   object-cover border border-[#D5CFC3]
                 "
               />
             ) : (
               <div className="
-                w-10 h-10 rounded-full
+                w-9 h-9 rounded-full
                 bg-[#23252A] text-white
                 flex items-center justify-center
                 font-bold text-sm
@@ -633,13 +644,11 @@ export const ProfileSetupPage = () => {
           </motion.div>
         )}
 
-
         {/* ============================================ */}
         {/* FEEDBACK MESSAGES */}
         {/* ============================================ */}
-
         {serverError && (
-          <div className="mb-3 shrink-0">
+          <div className="mb-2 shrink-0">
             <Banner
               type="error"
               onClose={() => setServerError('')}
@@ -650,35 +659,29 @@ export const ProfileSetupPage = () => {
         )}
 
         {successMessage && (
-          <div className="mb-3 shrink-0">
+          <div className="mb-2 shrink-0">
             <Banner type="success">
               {successMessage}
             </Banner>
           </div>
         )}
 
-
         {/* ============================================ */}
         {/* MAIN CONTENT */}
         {/* ============================================ */}
-
         <div className="
           grid grid-cols-1 lg:grid-cols-12
           gap-0 lg:gap-8
           items-start
           flex-1 min-h-0
-          lg:gap-8
         ">
-
           {/* LEFT: PROFILE FORM */}
-
-          <div className="lg:col-span-7 min-w-0 min-h-0 h-full">
-
+          <div className="lg:col-span-7 min-w-0 min-h-0 h-full flex flex-col">
             <form
               onSubmit={handleSubmit}
               className="
-                h-full min-h-0
-                flex flex-col
+                flex-1 min-h-0
+                flex flex-col justify-between
                 rounded-2xl
                 border border-[#DED7C9]
                 bg-[#FFFEFA]
@@ -686,58 +689,57 @@ export const ProfileSetupPage = () => {
                 overflow-hidden
               "
             >
-
               <div className="
                 flex-1 min-h-0 overflow-hidden
                 p-2.5 sm:p-5 lg:p-6
-                space-y-3 sm:space-y-7
+                flex flex-col justify-between
               ">
-
                 {/* ------------------------------------ */}
                 {/* 01. NICKNAME */}
                 {/* ------------------------------------ */}
-
-                <section>
+                <section className="shrink-0">
                   <div className="
                     flex items-center justify-between
-                    gap-2 mb-2 sm:mb-3
+                    gap-2 mb-1 sm:mb-2
                   ">
-                    <div>
-                      <div className="
-                        flex items-center gap-2
-                        text-sm font-bold
-                        text-[#23252A]
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#23252A]">
+                      <span className="
+                        w-5 h-5 sm:w-6 sm:h-6 rounded-lg
+                        bg-[#EAF0F8]
+                        text-[#2B68B4]
+                        flex items-center justify-center
+                        text-[10px] sm:text-[11px] font-bold
                       ">
-                        <span className="
-                          w-6 h-6 rounded-lg
-                          bg-[#EAF0F8]
-                          text-[#2B68B4]
-                          flex items-center justify-center
-                          text-[11px] font-bold
-                        ">
-                          01
-                        </span>
-
-                        Game nickname
-                        <span className="text-[#CE4242]">*</span>
-                      </div>
-
-                      <p className="
-                        text-[11px] text-[#8A857D]
-                        ml-8 mt-0.5
-                      ">
-                        This is how other players will know you.
-                      </p>
+                        01
+                      </span>
+                      Game nickname
+                      <span className="text-[#CE4242]">*</span>
                     </div>
 
-                    <span className="
-                      text-[10px] font-mono
-                      text-[#969087] shrink-0
-                    ">
-                      {nickname.length}/24
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="
+                        text-[10px] font-mono
+                        text-[#969087] shrink-0
+                      ">
+                        {nickname.length}/24
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRandomize}
+                        className="
+                          flex items-center gap-1
+                          text-[10px] sm:text-[11px] font-semibold
+                          text-[#2B68B4]
+                          hover:text-[#174B8C]
+                          transition-colors
+                          shrink-0
+                        "
+                      >
+                        <RefreshCw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        Random
+                      </button>
+                    </div>
                   </div>
-
 
                   <Input
                     id="player-nickname"
@@ -759,19 +761,16 @@ export const ProfileSetupPage = () => {
                         : null
                     }
                     className="
-                      [&_input]:min-h-[46px]
+                      [&_input]:min-h-[36px] sm:[&_input]:min-h-[46px]
+                      [&_input]:h-[36px] sm:[&_input]:h-auto
                       [&_input]:rounded-xl
-                      [&_input]:text-sm
+                      [&_input]:text-xs sm:[&_input]:text-sm
+                      [&_input]:py-1 sm:[&_input]:py-2
                     "
                   />
 
-
-                  {/* Nickname availability */}
-
-                  <div className="
-                    min-h-6 mt-1.5
-                    flex items-center justify-between gap-2
-                  ">
+                  {/* Nickname availability status */}
+                  <div className="min-h-[16px] mt-0.5 flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       {nicknameStatus && (
                         <div className={`
@@ -785,80 +784,48 @@ export const ProfileSetupPage = () => {
                           }
                         `}>
                           {nicknameStatus.type === 'loading' ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
                           ) : nicknameStatus.type === 'success' ? (
-                            <CheckCircle2 className="w-3 h-3" />
+                            <CheckCircle2 className="w-2.5 h-2.5" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3" />
+                            <AlertTriangle className="w-2.5 h-2.5" />
                           )}
-
                           <span>{nicknameStatus.label}</span>
                         </div>
                       )}
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleRandomize}
-                      className="
-                        flex items-center gap-1
-                        text-[11px] font-semibold
-                        text-[#2B68B4]
-                        hover:text-[#174B8C]
-                        transition-colors
-                        shrink-0
-                      "
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Suggest one
-                    </button>
                   </div>
-
-                  <p className="
-                    text-[10px] text-[#99938A]
-                    mt-1
-                  ">
-                    2–24 characters · Letters, numbers, - and _
-                  </p>
                 </section>
 
-
                 {/* DIVIDER */}
-
-                <div className="border-t border-[#EAE5DA]" />
-
+                <div className="border-t border-[#EAE5DA]/70 my-0.5 sm:my-2 shrink-0" />
 
                 {/* ------------------------------------ */}
                 {/* 02. CHARACTER COLOUR */}
                 {/* ------------------------------------ */}
-
-                <section>
-                  <div className="mb-2 sm:mb-3">
+                <section className="shrink-0">
+                  <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
                     <div className="
-                      flex items-center gap-2
-                      text-sm font-bold
+                      flex items-center gap-1.5
+                      text-xs sm:text-sm font-bold
                       text-[#23252A]
                     ">
                       <span className="
-                        w-6 h-6 rounded-lg
+                        w-5 h-5 sm:w-6 sm:h-6 rounded-lg
                         bg-[#F3EDF9]
                         text-[#8452A5]
                         flex items-center justify-center
-                        text-[11px] font-bold
+                        text-[10px] sm:text-[11px] font-bold
                       ">
                         02
                       </span>
-
                       Character colour
                       <span className="text-[#CE4242]">*</span>
                     </div>
 
-                    <p className="
-                      text-[11px] text-[#8A857D]
-                      ml-8 mt-0.5
-                    ">
-                      Choose your signature pencil shade.
-                    </p>
+                    <span className="text-[10px] font-mono text-[#2B68B4] font-bold">
+                      {colorFamily} SELECTED
+                    </span>
                   </div>
 
                   <ColorFamilySelector
@@ -868,64 +835,55 @@ export const ProfileSetupPage = () => {
                       setServerError('');
                     }}
                   />
-
                 </section>
 
-
                 {/* DIVIDER */}
-
-                <div className="border-t border-[#EAE5DA]" />
-
+                <div className="border-t border-[#EAE5DA]/70 my-0.5 sm:my-2 shrink-0" />
 
                 {/* ------------------------------------ */}
                 {/* 03. DATE OF BIRTH */}
                 {/* ------------------------------------ */}
-
-                <section>
-                  <div className="mb-2">
+                <section className="shrink-0">
+                  <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
                     <div className="
-                      flex items-center gap-2
-                      text-sm font-bold
+                      flex items-center gap-1.5
+                      text-xs sm:text-sm font-bold
                       text-[#23252A]
                     ">
                       <span className="
-                        w-6 h-6 rounded-lg
+                        w-5 h-5 sm:w-6 sm:h-6 rounded-lg
                         bg-[#EAF4F0]
                         text-[#39866B]
                         flex items-center justify-center
-                        text-[11px] font-bold
+                        text-[10px] sm:text-[11px] font-bold
                       ">
                         03
                       </span>
-
                       Date of birth
                       <span className="text-[#CE4242]">*</span>
                     </div>
 
-                    <p className="
-                      text-[11px] text-[#8A857D]
-                      ml-8 mt-0.5
-                    ">
-                      Select your date using the scrolling wheels.
-                    </p>
+                    {dob && (
+                      <span className="text-[10px] font-mono text-[#39866B] font-semibold">
+                        {dob}
+                      </span>
+                    )}
                   </div>
 
                   <div className="
                     w-full rounded-xl
                     bg-[#FAF9F5]
                     border border-[#EEEAE1]
-                    py-0 sm:py-2
+                    py-0.5 sm:py-2
                   ">
                     <ScrollableDobPicker
                       value={dob}
                       onChange={(newDob) => {
                         setDob(newDob);
-
                         setTouched(prev => ({
                           ...prev,
                           dob: true
                         }));
-
                         setServerError('');
                       }}
                     />
@@ -933,7 +891,7 @@ export const ProfileSetupPage = () => {
 
                   {touched.dob && !dobVal.isValid && (
                     <p className="
-                      mt-2 text-[11px]
+                      mt-1 text-[10px]
                       text-[#CE4242]
                       flex items-center gap-1
                     ">
@@ -941,33 +899,29 @@ export const ProfileSetupPage = () => {
                       {dobVal.error}
                     </p>
                   )}
-
                 </section>
-
               </div>
-
 
               {/* ====================================== */}
               {/* FORM FOOTER / STICKY ACTION */}
               {/* ====================================== */}
-
               <div className="
                 shrink-0 z-20
-                p-2.5 sm:p-4
+                p-2 sm:p-4
+                pb-[max(0.5rem,env(safe-area-inset-bottom))]
                 border-t border-[#EAE5DA]
                 bg-[#FFFEFA]/95
                 backdrop-blur-md
                 flex flex-col-reverse sm:flex-row
                 items-center justify-between gap-2
               ">
-
                 {isEditingExisting ? (
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => navigate('/profile')}
                     disabled={isSubmitting}
-                    className="w-full sm:w-auto text-xs"
+                    className="w-full sm:w-auto text-xs py-1.5"
                   >
                     Cancel
                   </Button>
@@ -991,7 +945,7 @@ export const ProfileSetupPage = () => {
                   iconPosition="right"
                   className="
                     w-full sm:w-auto
-                    min-h-[46px]
+                    min-h-[42px] sm:min-h-[46px]
                     px-6
                     text-xs sm:text-sm
                     font-bold
@@ -1009,17 +963,13 @@ export const ProfileSetupPage = () => {
                     'CREATE PLAYER PROFILE'
                   )}
                 </Button>
-
               </div>
-
             </form>
           </div>
-
 
           {/* ========================================== */}
           {/* RIGHT: DESKTOP CHARACTER PREVIEW */}
           {/* ========================================== */}
-
           <aside className="
             hidden lg:flex
             lg:col-span-5
@@ -1027,7 +977,6 @@ export const ProfileSetupPage = () => {
             sticky top-8
             min-w-0
           ">
-
             <div className="
               w-full rounded-2xl
               border border-[#DED7C9]
@@ -1035,7 +984,6 @@ export const ProfileSetupPage = () => {
               p-5
               shadow-[0_4px_20px_rgba(35,37,42,0.04)]
             ">
-
               <div className="
                 flex items-center justify-between
                 mb-4
@@ -1084,18 +1032,13 @@ export const ProfileSetupPage = () => {
                   will represent you across ODD WAR matches.
                 </p>
               </div>
-
             </div>
-
           </aside>
-
         </div>
-
 
         {/* ============================================ */}
         {/* BOTTOM BRANDING */}
         {/* ============================================ */}
-
         <footer className="
           hidden sm:flex
           items-center justify-between
@@ -1111,9 +1054,7 @@ export const ProfileSetupPage = () => {
             PLAYER IDENTITY
           </span>
         </footer>
-
       </div>
-
     </NotebookBackground>
   );
 };
