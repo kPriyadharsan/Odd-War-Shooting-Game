@@ -445,7 +445,7 @@ export const ProfileSetupPage = () => {
                 {/* FIELD 3: DATE OF BIRTH (DOB)                             */}
                 {/* ========================================================= */}
                 <div className="pt-5 border-t border-[#D5CFC3]">
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="mb-1.5">
                     <label
                       htmlFor="player-dob"
                       className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-2"
@@ -454,11 +454,6 @@ export const ProfileSetupPage = () => {
                       <span>3. Date of Birth (DOB)</span>
                       <span className="text-[#CE4242] font-bold">*</span>
                     </label>
-
-                    <span className="text-[11px] font-mono text-[#059669] flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      Strictly Private
-                    </span>
                   </div>
 
                   <div className="mt-2">
@@ -478,14 +473,6 @@ export const ProfileSetupPage = () => {
                       <span>{dobVal.error}</span>
                     </p>
                   )}
-
-                  {/* Privacy statement box */}
-                  <div className="mt-3 p-2.5 rounded-lg bg-[#FAF6EC] border border-[#D5CFC3] text-[11px] font-sans text-[#5C6069] flex items-start gap-2">
-                    <Lock className="w-3.5 h-3.5 text-[#2B68B4] shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Privacy Guarantee:</strong> Date of birth is collected for player account security and profile verification purposes. It is stored securely, kept strictly confidential, and <em>never</em> displayed to opponents or in public leaderboards.
-                    </span>
-                  </div>
                 </div>
 
                 {/* ========================================================= */}

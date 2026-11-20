@@ -247,10 +247,10 @@ export const PlayerProfilePage = () => {
                         type="button"
                         onClick={() => setIsEditModalOpen(true)}
                         className="inline-flex items-center text-xs font-mono text-[#4B5563] bg-[#F3F4F6] hover:bg-[#FFE0ED] hover:text-[#FF2A85] px-2 py-0.5 rounded-full border border-[#E5E7EB] hover:border-[#FF85C0] transition-colors cursor-pointer group"
-                        title="Click to update Date of Birth (Wheel Picker)"
+                        title="Click to update Date of Birth"
                       >
                         <Calendar className="w-3 h-3 mr-1 text-[#2B68B4] group-hover:text-[#FF2A85]" />
-                        <span>DOB: {formatDate(user.dob)} (Private)</span>
+                        <span>DOB: {formatDate(user.dob)}</span>
                         <Edit3 className="w-2.5 h-2.5 ml-1 text-zinc-400 group-hover:text-[#FF2A85]" />
                       </button>
                     ) : (
@@ -258,10 +258,10 @@ export const PlayerProfilePage = () => {
                         type="button"
                         onClick={() => setIsEditModalOpen(true)}
                         className="inline-flex items-center text-xs font-mono text-[#FF2A85] bg-[#FFF0F6] hover:bg-[#FFE0ED] px-2 py-0.5 rounded-full border border-[#FF85C0] transition-colors cursor-pointer"
-                        title="Add Date of Birth"
+                        title="Set Date of Birth"
                       >
                         <Calendar className="w-3 h-3 mr-1 text-[#FF2A85]" />
-                        <span>+ Set DOB (Wheel)</span>
+                        <span>+ Set DOB</span>
                       </button>
                     )}
                   </>
@@ -656,14 +656,10 @@ export const PlayerProfilePage = () => {
 
           {/* DOB with GTA 6 Pink Tone Wheel */}
           <div className="pt-2 border-t border-[#D5CFC3]">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <span className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#FF2A85]" />
                 <span>Date of Birth (DOB)</span>
-              </span>
-              <span className="text-[10px] font-mono text-[#059669] flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" />
-                Strictly Private
               </span>
             </div>
 
