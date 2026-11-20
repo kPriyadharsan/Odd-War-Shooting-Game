@@ -24,34 +24,34 @@ export function App() {
     >
       <Routes>
         <Route path="/" element={<RootLayout />}>
-          {/* Landing Page (Task 03) */}
+          {/* 1. Landing Page */}
           <Route index element={<LandingPage />} />
 
-          {/* Player Profile & Character Setup (Task 04) */}
+          {/* 2. Player Profile & Character Setup */}
           <Route path="profile-setup" element={<ProfileSetupPage />} />
 
-          {/* Room Management (Task 05 & Task 06) */}
+          {/* 3. Game Lobby & Room Management */}
           <Route path="rooms" element={<RoomsDashboard />} />
           <Route path="rooms/public" element={<PublicRoomsPage />} />
           <Route path="rooms/create" element={<CreateRoomPage />} />
           <Route path="rooms/join" element={<JoinRoomPage />} />
+
+          {/* 4. Multiplayer Waiting Room */}
           <Route path="rooms/:code" element={<WaitingRoomPage />} />
           <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
-          <Route path="rooms/:code/summary" element={<RoomSummaryPage />} />
 
-          {/* Notebook Battlefield (Task 07, 10, 11) */}
+          {/* 5. Notebook Battlefield Gameplay Arena */}
           <Route path="rooms/:code/battlefield" element={<BattlefieldPage />} />
           <Route path="rooms/:code/game" element={<BattlefieldPage />} />
-          <Route path="rooms/:code/play" element={<BattlefieldPage />} />
-          <Route path="rooms/:code/playing" element={<BattlefieldPage />} />
           <Route path="game/:code" element={<BattlefieldPage />} />
-          <Route path="battlefield/:code" element={<BattlefieldPage />} />
 
-          {/* Design System Preview (Task 02) */}
-          <Route path="design-system" element={<DesignSystemPreview />} />
-
-          {/* Server Architecture & Diagnostic Status (Task 01) */}
-          <Route path="system" element={<HomePage />} />
+          {/* Development & Internal Diagnostic Views (Isolated to dev mode) */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="dev/design-system" element={<DesignSystemPreview />} />
+              <Route path="dev/system" element={<HomePage />} />
+            </>
+          )}
 
           {/* 404 handler */}
           <Route path="*" element={<NotFoundPage />} />

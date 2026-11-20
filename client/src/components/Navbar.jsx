@@ -75,17 +75,6 @@ export const Navbar = () => {
               <User className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">Profile</span>
             </Link>
-
-            <Link
-              to="/design-system"
-              className={`hidden md:inline-block px-2.5 py-1.5 rounded-lg border transition-all ${
-                isDesignSystem
-                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
-                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
-              }`}
-            >
-              Design System
-            </Link>
           </nav>
 
           {/* Real-time Socket Indicator */}

@@ -83,7 +83,7 @@ export const ProfileSetupPage = () => {
         <header className="mb-6 sm:mb-10 border-b border-[#D5CFC3] pb-4 sm:pb-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#EFE8DA] border border-[#D5CFC3] text-xs font-mono text-[#5C6069] mb-3">
             <Sparkles className="w-3.5 h-3.5 text-[#2B68B4]" />
-            <span>Task 04: Player Profile & Character Selection</span>
+            <span>Warrior Identity & Call-Sign</span>
           </div>
 
           <h1 className="text-3xl xs:text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
