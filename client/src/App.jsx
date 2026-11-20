@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { RootLayout } from './layouts/RootLayout.jsx';
 import { LandingPage } from './pages/LandingPage.jsx';
 import { ProfileSetupPage } from './pages/ProfileSetupPage.jsx';
+import { PlayerProfilePage } from './pages/PlayerProfilePage.jsx';
+import { LeaderboardPage } from './pages/LeaderboardPage.jsx';
 import { RoomsDashboard } from './pages/rooms/RoomsDashboard.jsx';
 import { PublicRoomsPage } from './pages/rooms/PublicRoomsPage.jsx';
 import { CreateRoomPage } from './pages/rooms/CreateRoomPage.jsx';
@@ -27,21 +29,26 @@ export function App() {
           {/* 1. Landing Page */}
           <Route index element={<LandingPage />} />
 
-          {/* 2. Player Profile & Character Setup */}
+          {/* 2. Player Profile, Stats & Character Setup */}
+          <Route path="profile" element={<PlayerProfilePage />} />
+          <Route path="stats" element={<PlayerProfilePage />} />
           <Route path="profile-setup" element={<ProfileSetupPage />} />
 
-          {/* 3. Game Lobby & Room Management */}
+          {/* 3. Global Leaderboard & Standings */}
+          <Route path="leaderboard" element={<LeaderboardPage />} />
+
+          {/* 4. Game Lobby & Room Management */}
           <Route path="lobby" element={<RoomsDashboard />} />
           <Route path="rooms" element={<RoomsDashboard />} />
           <Route path="rooms/public" element={<PublicRoomsPage />} />
           <Route path="rooms/create" element={<CreateRoomPage />} />
           <Route path="rooms/join" element={<JoinRoomPage />} />
 
-          {/* 4. Multiplayer Waiting Room */}
+          {/* 5. Multiplayer Waiting Room */}
           <Route path="rooms/:code" element={<WaitingRoomPage />} />
           <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
 
-          {/* 5. Notebook Battlefield Gameplay Arena */}
+          {/* 6. Notebook Battlefield Gameplay Arena */}
           <Route path="rooms/:code/battlefield" element={<BattlefieldPage />} />
           <Route path="rooms/:code/game" element={<BattlefieldPage />} />
           <Route path="game/:code" element={<BattlefieldPage />} />

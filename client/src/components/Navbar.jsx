@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Pencil, User, LayoutGrid } from 'lucide-react';
+import { Pencil, User, LayoutGrid, Trophy } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket.js';
 
 export const Navbar = () => {
@@ -8,17 +8,9 @@ export const Navbar = () => {
   const { isConnected, latency } = useSocket();
 
   const isHome = location.pathname === '/';
-  const isProfile = location.pathname === '/profile-setup';
+  const isProfile = location.pathname === '/profile' || location.pathname === '/profile-setup' || location.pathname === '/stats';
+  const isLeaderboard = location.pathname === '/leaderboard';
   const isLobby = location.pathname === '/lobby' || location.pathname.startsWith('/rooms');
-  const isDesignSystem = location.pathname === '/design-system';
-
-  const handleHowToPlay = (e) => {
-    if (isHome) {
-      e.preventDefault();
-      const el = document.getElementById('how-it-works');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <header className="border-b border-[#D5CFC3] bg-[#F8F4EB]/95 backdrop-blur-sm sticky top-0 z-40">
@@ -65,7 +57,19 @@ export const Navbar = () => {
             </Link>
 
             <Link
-              to="/profile-setup"
+              to="/leaderboard"
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                isLeaderboard
+                  ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
+                  : 'text-[#5C6069] border-transparent hover:border-[#D5CFC3] hover:bg-[#FAF6EC]'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Rankings</span>
+            </Link>
+
+            <Link
+              to="/profile"
               className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
                 isProfile
                   ? 'bg-[#23252A] text-[#F8F4EB] border-[#23252A] shadow-sketch-sm'
@@ -73,7 +77,7 @@ export const Navbar = () => {
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Profile</span>
+              <span className="hidden xs:inline">Profile & Stats</span>
             </Link>
           </nav>
 

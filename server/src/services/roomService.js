@@ -4,6 +4,7 @@ import { Room, ROOM_STATUS, ALLOWED_PAGE_COUNTS, ALLOWED_PLAYER_CAPACITIES, TERR
 import { ShadeService } from './shadeService.js';
 import { BookEngine } from '../game-engine/BookEngine.js';
 import { TurnService } from './turnService.js';
+import { matchService } from './matchService.js';
 import { GAME_RULES_CONFIG } from '../config/gameRulesConfig.js';
 import { getDatabaseStatus } from '../config/database.js';
 import { logger } from '../utils/logger.js';
@@ -13,6 +14,19 @@ import { logger } from '../utils/logger.js';
  * Key: roomCode -> Room Object
  */
 export const inMemoryRooms = new Map();
+
+/**
+ * Checks if a room has concluded and records authoritative match results idempotently.
+ */
+const checkAndRecordMatchFinish = async (room) => {
+  if (room && room.status === ROOM_STATUS.FINISHED && !room.gameState?.matchRecordSaved) {
+    try {
+      await matchService.recordCompletedMatch(room);
+    } catch (err) {
+      logger.error(`[RoomService] Failed to record completed match:`, err);
+    }
+  }
+};
 
 /**
  * Helper to fetch internal room representation (used in test harnesses)
@@ -769,6 +783,16 @@ export const roomService = {
       return { code: cleanCode, status: ROOM_STATUS.CANCELLED, message: 'Room empty and cleaned up.', leavingPlayer };
     }
 
+    // If match was in progress and only 1 player remains, declare survivor victorious
+    if (room.status === ROOM_STATUS.PLAYING && room.players.length === 1) {
+      room.status = ROOM_STATUS.FINISHED;
+      if (!room.gameState) room.gameState = {};
+      room.gameState.winnerId = room.players[0].playerId;
+      room.gameState.winnerNickname = room.players[0].nickname;
+      logger.info(`[RoomService] Match won by forfeit in room ${cleanCode}. Survivor: ${room.players[0].nickname}`);
+      await checkAndRecordMatchFinish(room);
+    }
+
     // Reassign host if previous host left
     if (wasHost) {
       room.players[0].isHost = true;
@@ -925,6 +949,7 @@ export const roomService = {
         if (GAME_RULES_CONFIG.noActionPolicy === 'AUTO_ADVANCE') {
           nextTurn = TurnService.advanceToNextTurn(room);
           turnAdvanced = true;
+          await checkAndRecordMatchFinish(room);
         } else {
           room.gameState.turnPhase = 'AWAITING_ACTION';
           if (room.gameState.currentTurn) {
@@ -1218,6 +1243,7 @@ export const roomService = {
     });
 
     const nextTurn = TurnService.advanceToNextTurn(room);
+    await checkAndRecordMatchFinish(room);
 
     if (isDbConnected) {
       room.markModified('players');
@@ -1600,6 +1626,7 @@ export const roomService = {
     });
 
     const nextTurn = TurnService.advanceToNextTurn(room);
+    await checkAndRecordMatchFinish(room);
 
     if (isDbConnected) {
       room.markModified('players');
@@ -1666,6 +1693,7 @@ export const roomService = {
     });
 
     const nextTurn = TurnService.advanceToNextTurn(room);
+    await checkAndRecordMatchFinish(room);
 
     if (isDbConnected) {
       room.markModified('gameState');

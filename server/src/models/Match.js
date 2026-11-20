@@ -1,47 +1,87 @@
 import mongoose from 'mongoose';
 
 /**
- * Match Schema Foundation
- * Stores completed match results, stats, and player performances.
+ * Match Schema
+ * Authoritative record of completed ODD WARS matches.
  */
+const matchPlayerSchema = new mongoose.Schema(
+  {
+    playerId: { type: String, required: true },
+    nickname: { type: String, required: true },
+    primaryColor: { type: String, default: 'BLUE' },
+    assignedShade: { type: Object, default: null },
+    isWinner: { type: Boolean, default: false },
+    isEliminated: { type: Boolean, default: false },
+    placement: { type: Number, default: 2 },
+    shotsFired: { type: Number, default: 0 },
+    opponentsEliminated: { type: Number, default: 0 },
+    eliminatedRowsCount: { type: Number, default: 0 }
+  },
+  { _id: false }
+);
+
 const matchSchema = new mongoose.Schema(
   {
+    matchId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true
+    },
     roomCode: {
       type: String,
+      required: true,
+      index: true
+    },
+    roomName: {
+      type: String,
+      default: 'Odd Wars Match'
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false
+    },
+    paperStyle: {
+      type: String,
+      default: 'classic-blue'
+    },
+    bookPageCount: {
+      type: Number,
+      default: 100
+    },
+    players: {
+      type: [matchPlayerSchema],
       required: true
     },
-    players: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User'
-        },
-        username: String,
-        kills: { type: Number, default: 0 },
-        deaths: { type: Number, default: 0 },
-        score: { type: Number, default: 0 },
-        placement: { type: Number, min: 1, max: 4 }
-      }
-    ],
     winner: {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-      },
-      username: String
+      playerId: { type: String, default: null },
+      nickname: { type: String, default: null },
+      primaryColor: { type: String, default: null }
+    },
+    totalTurns: {
+      type: Number,
+      default: 1
     },
     durationSeconds: {
       type: Number,
       default: 0
     },
-    gameMode: {
+    status: {
       type: String,
-      default: 'deathmatch'
+      default: 'FINISHED'
+    },
+    completedAt: {
+      type: Date,
+      default: Date.now,
+      index: true
     }
   },
   {
     timestamps: true
   }
 );
+
+// Composite index for fast player match history lookup with sorting
+matchSchema.index({ 'players.playerId': 1, completedAt: -1 });
 
 export const Match = mongoose.model('Match', matchSchema);
