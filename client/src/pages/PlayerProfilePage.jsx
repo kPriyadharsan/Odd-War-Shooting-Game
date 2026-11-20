@@ -19,10 +19,13 @@ import {
 } from 'lucide-react';
 import { getPlayerSession } from '../store/playerSession.js';
 import { matchApi } from '../services/matchApi.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton.jsx';
 import { MatchDetailsModal } from '../components/profile/MatchDetailsModal.jsx';
 
 export const PlayerProfilePage = () => {
   const session = getPlayerSession();
+  const { user, isAuthenticated } = useAuth();
   const [stats, setStats] = useState(null);
   const [matches, setMatches] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, totalPages: 1, total: 0 });
@@ -136,19 +139,36 @@ export const PlayerProfilePage = () => {
                 </span>
               </div>
               <p className="font-mono text-xs text-[#6B7280] mt-0.5">
-                Session ID: <span className="text-[#23252A] font-semibold">{session.playerId}</span>
+                Player ID: <span className="text-[#23252A] font-semibold">{session.playerId}</span>
+                {isAuthenticated && user?.email && (
+                  <span className="ml-2 font-mono text-xs text-[#2563EB]">({user.email})</span>
+                )}
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="inline-flex items-center text-xs font-mono text-[#059669]">
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                  Verified Notebook Record
-                </span>
+                {isAuthenticated ? (
+                  <span className="inline-flex items-center text-xs font-mono text-[#059669] bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                    Google Verified Account
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-xs font-mono text-[#D97706] bg-[#FFFBEB] px-2 py-0.5 rounded-full border border-[#FDE68A]">
+                    Guest Session
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
           {/* Action Button */}
           <div className="flex items-center gap-2">
+            {!isAuthenticated && (
+              <GoogleSignInButton
+                returnTo="/profile"
+                text="Link Google Account"
+                size="sm"
+                className="shadow-sketch-sm"
+              />
+            )}
             <button
               onClick={() => fetchProfileData(pagination.page)}
               className="p-2.5 rounded-xl border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-[#23252A] transition-colors shadow-sketch-sm"

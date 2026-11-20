@@ -11,6 +11,7 @@ import { initSocketServer } from './sockets/index.js';
 import { GameEngine } from './game-engine/GameEngine.js';
 import apiRoutes from './routes/index.js';
 import healthRoutes from './routes/healthRoutes.js';
+import { cookieParser } from './middleware/cookieParser.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+app.use(cookieParser);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

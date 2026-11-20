@@ -1,22 +1,185 @@
 import { config } from '../config/env.js';
+import { authService } from '../services/authService.js';
+import { sessionService } from '../services/sessionService.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { logger } from '../utils/logger.js';
 
 /**
- * Auth Controller Foundation
- * To be implemented in Task 02 with Google OAuth token exchange.
+ * Sanitizes user record before returning to clients.
  */
-export const googleAuthCallback = async (req, res, next) => {
-  if (!config.isGoogleAuthConfigured) {
-    return sendError(
-      res,
-      'Google authentication is inactive. GOOGLE_CLIENT_ID is not configured.',
-      501
-    );
-  }
-
-  return sendSuccess(res, null, 'Google Auth foundation ready. Implementation scheduled for Task 02.');
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  const raw = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };
+  delete raw.__v;
+  delete raw.passwordHash;
+  return raw;
 };
 
+/**
+ * Initiates the Google OAuth 2.0 OpenID Connect authorization code flow.
+ * Generates cryptographically secure state, nonce, and PKCE challenge.
+ */
+export const initiateGoogleAuth = async (req, res) => {
+  try {
+    if (!config.isGoogleAuthConfigured) {
+      if (req.accepts('html')) {
+        return res.redirect('/login?error=google_not_configured');
+      }
+      return sendError(
+        res,
+        'Google authentication is inactive. GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not configured on the server.',
+        501
+      );
+    }
+
+    const guestPlayerId = req.query.guestPlayerId || req.cookies?.guest_player_id || null;
+    const returnTo = req.query.returnTo || '/profile';
+
+    const { authorizationUrl, transactionToken } = authService.generateOAuthTransaction({
+      guestPlayerId,
+      returnTo
+    });
+
+    // Store sealed transaction in temporary HttpOnly cookie (10 minute TTL)
+    res.cookie('odd_wars_oauth_tx', transactionToken, {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 10 * 60 * 1000
+    });
+
+    return res.redirect(authorizationUrl);
+  } catch (error) {
+    logger.error('[AuthController] Failed to initiate Google OAuth:', error);
+    if (req.accepts('html')) {
+      return res.redirect('/login?error=oauth_init_failed');
+    }
+    return sendError(res, error.message || 'Failed to initiate Google authentication', error.statusCode || 500);
+  }
+};
+
+/**
+ * Handles Google OAuth callback.
+ * Validates state, nonce, exchanges authorization code, verifies ID token,
+ * creates or links player account, and issues an HttpOnly session cookie.
+ */
+export const handleGoogleCallback = async (req, res) => {
+  try {
+    // 1. Check for errors returned by Google
+    if (req.query.error) {
+      logger.warn(`[AuthController] Google OAuth callback error: ${req.query.error}`);
+      return res.redirect(`/login?error=${encodeURIComponent(req.query.error)}`);
+    }
+
+    const { code, state } = req.query;
+
+    if (!code || !state) {
+      logger.warn('[AuthController] Missing code or state in Google callback');
+      return res.redirect('/login?error=missing_code_or_state');
+    }
+
+    // 2. Validate and consume sealed transaction cookie
+    const transactionToken = req.cookies?.odd_wars_oauth_tx;
+    if (!transactionToken) {
+      logger.warn('[AuthController] Missing OAuth transaction cookie in callback');
+      return res.redirect('/login?error=session_expired');
+    }
+
+    let txData = null;
+    try {
+      txData = authService.verifyAndConsumeTransaction(transactionToken, state);
+    } catch (txError) {
+      logger.error('[AuthController] OAuth transaction verification failed:', txError.message);
+      return res.redirect(`/login?error=${encodeURIComponent(txError.message)}`);
+    }
+
+    // 3. Exchange authorization code & verify ID token
+    const googleProfile = await authService.exchangeCodeAndVerifyIdToken({
+      code,
+      codeVerifier: txData.codeVerifier,
+      expectedNonce: txData.nonce
+    });
+
+    // 4. Find or create persistent User (safe guest linking)
+    const user = await authService.findOrCreateUserFromGoogle({
+      googleProfile,
+      guestPlayerId: txData.guestPlayerId
+    });
+
+    // 5. Create persistent session
+    const { rawToken } = await sessionService.createSession({ user, req });
+
+    // 6. Set secure HttpOnly session cookie (7 days)
+    res.cookie('odd_wars_session', rawToken, {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    // Clear temporary transaction cookie
+    res.clearCookie('odd_wars_oauth_tx', {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
+
+    logger.info(`[AuthController] User ${user.nickname} (${user.playerId}) authenticated successfully via Google`);
+
+    // Clean redirect without tokens in URL
+    const destination = txData.returnTo && txData.returnTo.startsWith('/') ? txData.returnTo : '/profile';
+    return res.redirect(destination);
+  } catch (error) {
+    logger.error('[AuthController] Error in Google OAuth callback:', error);
+    return res.redirect(`/login?error=${encodeURIComponent(error.message || 'authentication_failed')}`);
+  }
+};
+
+/**
+ * Returns authenticated player profile and active session metadata.
+ */
 export const getCurrentUser = async (req, res) => {
-  return sendSuccess(res, { user: req.user }, 'Authenticated user profile retrieved');
+  try {
+    return sendSuccess(
+      res,
+      {
+        user: sanitizeUser(req.user),
+        session: {
+          expiresAt: req.session?.expiresAt || null,
+          lastActivityAt: req.session?.lastActivityAt || null
+        }
+      },
+      'Authenticated user profile retrieved'
+    );
+  } catch (error) {
+    logger.error('[AuthController] Error retrieving current user:', error);
+    return sendError(res, 'Failed to retrieve authenticated user', 500);
+  }
+};
+
+/**
+ * Logs out user: revokes server-side session and clears HttpOnly session cookie.
+ */
+export const logoutUser = async (req, res) => {
+  try {
+    const rawToken = req.cookies?.odd_wars_session;
+    if (rawToken) {
+      await sessionService.revokeSession(rawToken);
+    }
+
+    res.clearCookie('odd_wars_session', {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
+
+    return sendSuccess(res, null, 'Logged out successfully');
+  } catch (error) {
+    logger.error('[AuthController] Error logging out:', error);
+    return sendError(res, 'Failed to log out', 500);
+  }
 };
