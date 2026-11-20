@@ -1,6 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback
+} from 'react';
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
+
 import {
   User,
   CheckCircle2,
@@ -8,49 +17,85 @@ import {
   ArrowRight,
   Sparkles,
   Calendar,
-  Lock,
   ShieldCheck,
   RefreshCw,
   X,
-  Mail
+  Mail,
+  Shield,
+  Pencil,
+  ChevronRight
 } from 'lucide-react';
+
 import {
   NotebookBackground,
   Button,
-  Card,
   Input
 } from '../components/ui/index.js';
-import { CharacterPreview } from '../components/profile/CharacterPreview.jsx';
+
+import {
+  CharacterPreview,
+  CharacterPopupPreview
+} from '../components/profile/CharacterPreview.jsx';
+
 import { ColorFamilySelector } from '../components/profile/ColorFamilySelector.jsx';
 import { ScrollableDobPicker } from '../components/profile/ScrollableDobPicker.jsx';
-import { validateNickname, validateDob } from '../utils/validation.js';
-import { loadProfileDraft, saveProfileDraft } from '../store/gameStore.js';
+
+import {
+  validateNickname,
+  validateDob
+} from '../utils/validation.js';
+
+import {
+  loadProfileDraft,
+  saveProfileDraft
+} from '../store/gameStore.js';
+
 import { COLOR_FAMILIES } from '../config/colors.js';
 import { soundEffects } from '../services/soundEffects.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { authApi } from '../services/authApi.js';
 
+
+const FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
+
+
 export const ProfileSetupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const shouldReduceMotion = useReducedMotion();
-  const { user, isAuthenticated, updateProfile } = useAuth();
 
-  const isEditingExisting = Boolean(user && user.isProfileComplete);
+  const {
+    user,
+    isAuthenticated,
+    updateProfile
+  } = useAuth();
 
-  // Initial field states: NEVER prefill nickname with user.displayName!
-  // If user already has a game nickname (from existing complete/partial profile), preserve it.
+  const isEditingExisting = Boolean(
+    user && user.isProfileComplete
+  );
+
+  // --------------------------------------------------
+  // INITIAL PROFILE VALUES
+  // --------------------------------------------------
+
   const [nickname, setNickname] = useState(() => {
-    if (user?.nickname && !user.nickname.startsWith('Warrior_') && !user.nickname.startsWith('Player_')) {
+    if (
+      user?.nickname &&
+      !user.nickname.startsWith('Warrior_') &&
+      !user.nickname.startsWith('Player_')
+    ) {
       return user.nickname;
     }
-    const draft = loadProfileDraft();
-    return draft.nickname || '';
+
+    return loadProfileDraft().nickname || '';
   });
 
-  const [colorFamily, setColorFamily] = useState(() => {
-    return user?.primaryColor || loadProfileDraft().primaryColor || 'BLUE';
-  });
+  const [colorFamily, setColorFamily] = useState(
+    () => user?.primaryColor ||
+      loadProfileDraft().primaryColor ||
+      'BLUE'
+  );
 
   const [dob, setDob] = useState(() => {
     if (user?.dob) {
@@ -60,6 +105,7 @@ export const ProfileSetupPage = () => {
         return '';
       }
     }
+
     return '';
   });
 
@@ -71,101 +117,254 @@ export const ProfileSetupPage = () => {
   const [nicknameAvailability, setNicknameAvailability] = useState({
     checked: false,
     checking: false,
-    available: true,
+    available: false,
     message: ''
   });
 
-  const [serverError, setServerError] = useState(null);
+  const [serverError, setServerError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
 
-  // Synchronize existing valid fields if user loads after mount
+  const debounceTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
+
+
+  // --------------------------------------------------
+  // SYNCHRONIZE AUTHENTICATED USER
+  // --------------------------------------------------
+
   useEffect(() => {
-    if (user) {
-      if (user.nickname && !user.nickname.startsWith('Warrior_') && !user.nickname.startsWith('Player_')) {
-        setNickname(prev => prev || user.nickname);
-      }
-      if (user.primaryColor) {
-        setColorFamily(user.primaryColor);
-      }
-      if (user.dob) {
-        try {
-          const formatted = new Date(user.dob).toISOString().split('T')[0];
-          setDob(prev => prev || formatted);
-        } catch {
-          // ignore
-        }
+    if (!user) return;
+
+    if (
+      user.nickname &&
+      !user.nickname.startsWith('Warrior_') &&
+      !user.nickname.startsWith('Player_')
+    ) {
+      setNickname(prev => prev || user.nickname);
+    }
+
+    if (user.primaryColor) {
+      setColorFamily(user.primaryColor);
+    }
+
+    if (user.dob) {
+      try {
+        const formatted = new Date(user.dob)
+          .toISOString()
+          .split('T')[0];
+
+        setDob(prev => prev || formatted);
+      } catch {
+        // Ignore invalid server DOB
       }
     }
   }, [user]);
 
-  // Real-time debounced nickname availability check
-  const debounceTimerRef = useRef(null);
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+
+  // --------------------------------------------------
+  // NICKNAME AVAILABILITY
+  // Debounced + protects against stale responses
+  // --------------------------------------------------
+
+  const checkNickname = useCallback(async (clean) => {
+    const requestId = ++requestIdRef.current;
+
+    try {
+      const response = await authApi.checkNicknameAvailability(clean);
+
+      if (requestId !== requestIdRef.current) return;
+
+      setNicknameAvailability({
+        checked: true,
+        checking: false,
+        available: response.available,
+        message: response.message ||
+          (response.available
+            ? 'Nickname available'
+            : 'Nickname already taken')
+      });
+
+    } catch {
+      if (requestId !== requestIdRef.current) return;
+
+      // Let the server perform final validation during submission.
+      setNicknameAvailability({
+        checked: true,
+        checking: false,
+        available: true,
+        message: 'Could not verify right now'
+      });
     }
+  }, []);
+
+  useEffect(() => {
+    clearTimeout(debounceTimerRef.current);
 
     const clean = nickname.trim();
     const validation = validateNickname(clean);
 
+    const isCurrentNickname =
+      user?.nickname &&
+      clean.toLowerCase() === user.nickname.toLowerCase();
+
     if (!validation.isValid) {
-      setNicknameAvailability({ checked: false, checking: false, available: false, message: '' });
+      requestIdRef.current++;
+
+      setNicknameAvailability({
+        checked: false,
+        checking: false,
+        available: false,
+        message: ''
+      });
+
       return;
     }
 
-    // If nickname is identical to user's current nickname, it is available
-    if (user?.nickname && clean.toLowerCase() === user.nickname.toLowerCase()) {
-      setNicknameAvailability({ checked: true, checking: false, available: true, message: 'Current nickname' });
+    if (isCurrentNickname) {
+      requestIdRef.current++;
+
+      setNicknameAvailability({
+        checked: true,
+        checking: false,
+        available: true,
+        message: 'Your current nickname'
+      });
+
       return;
     }
 
-    setNicknameAvailability(prev => ({ ...prev, checking: true }));
+    setNicknameAvailability({
+      checked: false,
+      checking: true,
+      available: false,
+      message: ''
+    });
 
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await authApi.checkNicknameAvailability(clean);
-        setNicknameAvailability({
-          checked: true,
-          checking: false,
-          available: res.available,
-          message: res.message || (res.available ? 'Nickname is available' : 'Nickname is already taken')
-        });
-      } catch {
-        setNicknameAvailability({ checked: false, checking: false, available: true, message: '' });
-      }
-    }, 350);
+    debounceTimerRef.current = setTimeout(() => {
+      checkNickname(clean);
+    }, 450);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      clearTimeout(debounceTimerRef.current);
+      requestIdRef.current++;
     };
-  }, [nickname, user?.nickname]);
 
-  // Validations
-  const nicknameVal = validateNickname(nickname);
-  const dobVal = validateDob(dob);
-  const isFormValid = nicknameVal.isValid && dobVal.isValid && (nicknameAvailability.available || (user?.nickname && nickname.trim().toLowerCase() === user.nickname.toLowerCase()));
+  }, [nickname, user?.nickname, checkNickname]);
+
+
+  // --------------------------------------------------
+  // VALIDATION
+  // --------------------------------------------------
+
+  const nicknameVal = useMemo(
+    () => validateNickname(nickname),
+    [nickname]
+  );
+
+  const dobVal = useMemo(
+    () => validateDob(dob),
+    [dob]
+  );
+
+  const isCurrentNickname =
+    user?.nickname &&
+    nickname.trim().toLowerCase() === user.nickname.toLowerCase();
+
+  const isFormValid =
+    nicknameVal.isValid &&
+    dobVal.isValid &&
+    nicknameAvailability.checked &&
+    !nicknameAvailability.checking &&
+    (nicknameAvailability.available || isCurrentNickname);
+
+  const nicknameStatus = useMemo(() => {
+    if (!nickname.trim() || !nicknameVal.isValid) return null;
+
+    if (nicknameAvailability.checking) {
+      return {
+        label: 'Checking availability',
+        type: 'loading'
+      };
+    }
+
+    if (!nicknameAvailability.checked) return null;
+
+    if (nicknameAvailability.available) {
+      return {
+        label: nicknameAvailability.message === 'Your current nickname'
+          ? 'Current nickname'
+          : 'Available',
+        type: 'success'
+      };
+    }
+
+    return {
+      label: 'Already taken',
+      type: 'error'
+    };
+
+  }, [nickname, nicknameVal.isValid, nicknameAvailability]);
+
+
+  // --------------------------------------------------
+  // RANDOM PROFILE GENERATOR
+  // --------------------------------------------------
 
   const handleRandomize = () => {
-    const prefixes = ['Shadow', 'Pencil', 'Chalk', 'Graphite', 'Ink', 'Speedy', 'Bullet', 'Sharp', 'Swift', 'Blaze'];
-    const titles = ['Warrior', 'Sniper', 'Pilot', 'Ranger', 'Captain', 'Scout', 'Commander', 'Ninja'];
-    const randName = `${prefixes[Math.floor(Math.random() * prefixes.length)]}${titles[Math.floor(Math.random() * titles.length)]}`;
-    const colorKeys = Object.keys(COLOR_FAMILIES);
-    const randColor = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+    const prefixes = [
+      'Shadow', 'Pencil', 'Chalk', 'Graphite',
+      'Ink', 'Speedy', 'Bullet', 'Sharp',
+      'Swift', 'Blaze'
+    ];
 
-    setNickname(randName);
-    setColorFamily(randColor);
-    setTouched(prev => ({ ...prev, nickname: true }));
-    setServerError(null);
+    const titles = [
+      'Warrior', 'Sniper', 'Pilot', 'Ranger',
+      'Captain', 'Scout', 'Commander', 'Ninja'
+    ];
+
+    const randomName =
+      prefixes[Math.floor(Math.random() * prefixes.length)] +
+      titles[Math.floor(Math.random() * titles.length)];
+
+    const colorKeys = Object.keys(COLOR_FAMILIES);
+
+    const randomColor =
+      colorKeys[Math.floor(Math.random() * colorKeys.length)];
+
+    soundEffects.playButtonClick();
+
+    setNickname(randomName);
+    setColorFamily(randomColor);
+
+    setTouched(prev => ({
+      ...prev,
+      nickname: true
+    }));
+
+    setServerError('');
+    setSuccessMessage('');
   };
+
+
+  // --------------------------------------------------
+  // PROFILE SUBMISSION
+  // --------------------------------------------------
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
+
     soundEffects.playButtonClick();
-    setTouched({ nickname: true, dob: true });
-    setServerError(null);
+
+    setTouched({
+      nickname: true,
+      dob: true
+    });
+
+    setServerError('');
+    setSuccessMessage('');
 
     if (!nicknameVal.isValid) {
       setServerError(nicknameVal.error);
@@ -177,370 +376,781 @@ export const ProfileSetupPage = () => {
       return;
     }
 
-    if (!nicknameAvailability.available && !(user?.nickname && nickname.trim().toLowerCase() === user.nickname.toLowerCase())) {
-      setServerError('The chosen nickname is already taken. Please choose another.');
+    if (
+      !nicknameAvailability.available &&
+      !isCurrentNickname
+    ) {
+      setServerError(
+        'This nickname is already taken. Please choose another.'
+      );
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const profileData = {
+        nickname: nicknameVal.trimmed,
+        primaryColor: colorFamily,
+        dob: dobVal.isoString
+      };
+
       if (isAuthenticated) {
-        // Authenticated Google user: save to server
-        const updated = await updateProfile({
-          nickname: nicknameVal.trimmed,
-          primaryColor: colorFamily,
-          dob: dobVal.isoString
-        });
+        const updated = await updateProfile(profileData);
 
         if (!updated || !updated.isProfileComplete) {
-          throw new Error('Server could not confirm profile completion.');
+          throw new Error(
+            'Server could not confirm profile completion.'
+          );
         }
 
-        soundEffects.playMagicShimmer();
-        setSuccessMessage('Player identity created successfully! Entering the battlefield...');
-
-        // Save local copy
         saveProfileDraft({
           nickname: nicknameVal.trimmed,
           primaryColor: colorFamily
         });
+
+        soundEffects.playMagicShimmer();
+
+        setSuccessMessage(
+          'Player identity created successfully!'
+        );
+
+        const destination =
+          location.state?.from?.pathname || '/lobby';
 
         setTimeout(() => {
-          const destination = location.state?.from?.pathname || '/lobby';
           navigate(destination, { replace: true });
-        }, 800);
+        }, 900);
+
       } else {
-        // Guest user: save to local store
         saveProfileDraft({
           nickname: nicknameVal.trimmed,
           primaryColor: colorFamily
         });
+
         soundEffects.playMagicShimmer();
-        setSuccessMessage('Guest profile saved! Entering the battlefield...');
+
+        setSuccessMessage(
+          'Guest profile saved successfully!'
+        );
+
         setTimeout(() => {
           navigate('/lobby', { replace: true });
-        }, 500);
+        }, 700);
       }
-    } catch (err) {
-      console.error('[ProfileSetupPage] Submission failed:', err);
-      setServerError(err.message || 'Failed to save profile. Please check your connection and try again.');
+
+    } catch (error) {
+      console.error(
+        '[ProfileSetupPage] Submission failed:',
+        error
+      );
+
+      setServerError(
+        error.message ||
+        'Unable to save your profile. Please try again.'
+      );
+
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Max selectable date is today
-  const maxDate = new Date().toISOString().split('T')[0];
+
+  // --------------------------------------------------
+  // REUSABLE STATUS BANNER
+  // --------------------------------------------------
+
+  const Banner = ({ type, children, onClose }) => {
+    const success = type === 'success';
+
+    return (
+      <motion.div
+        initial={shouldReduceMotion ? false : { opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`
+          flex items-start gap-2.5
+          p-3 rounded-xl border
+          text-xs sm:text-sm
+          ${
+            success
+              ? 'bg-[#F0F7F3] border-[#B8D9C4] text-[#246B43]'
+              : 'bg-[#FDF2F2] border-[#E8BDBD] text-[#B52E2E]'
+          }
+        `}
+      >
+        {success ? (
+          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+        ) : (
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        )}
+
+        <span className="flex-1 leading-relaxed">
+          {children}
+        </span>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 opacity-60 hover:opacity-100"
+            aria-label="Dismiss message"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </motion.div>
+    );
+  };
+
+
+  // --------------------------------------------------
+  // MAIN UI
+  // --------------------------------------------------
 
   return (
-    <NotebookBackground showMargin={true} className="py-4 sm:py-10">
-      <div className="max-w-5xl mx-auto pl-8 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
-        
-        {/* Onboarding Header */}
-        <header className="mb-6 sm:mb-8 border-b border-[#D5CFC3] pb-4 sm:pb-6">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#EFE8DA] border border-[#D5CFC3] text-xs font-mono text-[#5C6069] mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-[#2B68B4]" />
-            <span>
-              {isEditingExisting ? 'Player Settings & Customization' : 'Mandatory Warrior Onboarding'}
-            </span>
+    <NotebookBackground
+      showMargin={false}
+      className="
+        min-h-[100dvh]
+        overflow-x-hidden
+        flex flex-col
+        py-3 sm:py-6 lg:py-10
+      "
+    >
+
+      <div
+        className="
+          w-full max-w-6xl mx-auto
+          px-3 sm:px-6 lg:px-8
+          flex-1 flex flex-col
+        "
+        style={{ fontFamily: FONT_STACK }}
+      >
+
+        {/* ============================================ */}
+        {/* HEADER */}
+        {/* ============================================ */}
+
+        <header
+          className="
+            flex items-center justify-between gap-3
+            pb-3 sm:pb-5 mb-4 sm:mb-6
+            border-b border-[#D5CFC3]/80
+            shrink-0
+          "
+        >
+          <div className="min-w-0">
+            <div className="
+              flex items-center gap-2
+              text-[10px] sm:text-xs
+              font-semibold tracking-[0.16em]
+              text-[#8B8172] uppercase mb-1
+            ">
+              <Pencil className="w-3 h-3" />
+              ODD WAR
+              <span className="w-1 h-1 rounded-full bg-[#B6AA97]" />
+              PLAYER SETUP
+            </div>
+
+            <h1 className="
+              text-xl xs:text-2xl sm:text-3xl lg:text-4xl
+              font-bold tracking-tight
+              text-[#23252A] leading-tight
+            ">
+              {isEditingExisting
+                ? 'Edit your profile'
+                : 'Create your identity'}
+            </h1>
+
+            <p className="
+              text-[11px] sm:text-sm
+              text-[#77736C] mt-1
+              leading-relaxed
+            ">
+              {isEditingExisting
+                ? 'Update your player details.'
+                : 'Set up your player before entering the battlefield.'}
+            </p>
           </div>
 
-          <h1 className="text-3xl xs:text-4xl sm:text-5xl font-handwriting font-bold tracking-tight text-[#23252A]">
-            {isEditingExisting ? 'Edit Player Profile' : 'WELCOME TO ODD WARS'}
-          </h1>
+          <div className="shrink-0">
+            <div className="lg:hidden">
+              <CharacterPopupPreview
+                nickname={nickname}
+                colorFamily={colorFamily}
+              />
+            </div>
 
-          <p className="mt-2 text-sm sm:text-base text-[#5C6069] max-w-2xl font-sans">
-            {isEditingExisting
-              ? 'Update your game call-sign nickname, pencil shade, and date of birth.'
-              : 'Create your player identity before entering the battlefield.'}
-          </p>
+            <div className="
+              hidden lg:flex items-center gap-2
+              px-3 py-2 rounded-full
+              border border-[#D5CFC3]
+              bg-[#FAF6EC]
+              text-xs font-medium text-[#5C6069]
+            ">
+              <Shield className="w-3.5 h-3.5" />
+              Player identity
+            </div>
+          </div>
         </header>
 
-        {/* Separate Google Identity Card */}
+
+        {/* ============================================ */}
+        {/* ACCOUNT INFORMATION */}
+        {/* ============================================ */}
+
         {isAuthenticated && user && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl bg-[#FAF6EC] border border-[#D5CFC3] shadow-sketch-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            className="
+              flex items-center gap-3
+              p-3 mb-4
+              rounded-xl
+              bg-[#FAF6EC]
+              border border-[#DED7C9]
+              shrink-0
+            "
           >
-            <div className="flex items-center gap-3">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.displayName || 'Google Account'}
-                  className="w-10 h-10 rounded-full border border-[#23252A] shadow-sm"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-[#23252A] text-white flex items-center justify-center font-bold text-sm">
-                  {user.email ? user.email.charAt(0).toUpperCase() : 'G'}
-                </div>
-              )}
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-sans font-semibold text-xs text-[#23252A]">
-                    {user.displayName || 'Google Account Holder'}
-                  </span>
-                  <span className="inline-flex items-center text-[10px] font-mono text-[#059669] bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
-                    <ShieldCheck className="w-3 h-3 mr-1" />
-                    Connected
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs font-mono text-[#5C6069] mt-0.5">
-                  <Mail className="w-3 h-3 text-[#6B7280]" />
-                  <span>{user.email}</span>
-                </div>
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.displayName || 'Google account'}
+                className="
+                  w-10 h-10 rounded-full
+                  object-cover border border-[#D5CFC3]
+                "
+              />
+            ) : (
+              <div className="
+                w-10 h-10 rounded-full
+                bg-[#23252A] text-white
+                flex items-center justify-center
+                font-bold text-sm
+              ">
+                {user.email?.charAt(0).toUpperCase() || 'G'}
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              <div className="
+                text-xs sm:text-sm font-semibold
+                text-[#23252A] truncate
+              ">
+                {user.displayName || 'Google Account'}
+              </div>
+
+              <div className="
+                flex items-center gap-1
+                text-[10px] sm:text-xs
+                text-[#77736C] mt-0.5
+              ">
+                <Mail className="w-3 h-3 shrink-0" />
+                <span className="truncate">{user.email}</span>
               </div>
             </div>
 
-            <div className="text-[11px] font-mono text-[#8E949F] sm:text-right max-w-xs">
-              <span className="text-[#2B68B4] font-semibold">Separate Identity:</span> Your Google name and email are kept private and never used as your public battle nickname.
+            <div className="
+              flex items-center gap-1
+              text-[10px] font-semibold
+              text-[#278052]
+              bg-[#EAF5ED]
+              px-2 py-1 rounded-full shrink-0
+            ">
+              <ShieldCheck className="w-3 h-3" />
+              Connected
             </div>
           </motion.div>
         )}
 
-        {/* Error Alert Banner */}
+
+        {/* ============================================ */}
+        {/* FEEDBACK MESSAGES */}
+        {/* ============================================ */}
+
         {serverError && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-6 p-4 rounded-xl bg-[#FDF2F2] border-2 border-[#CE4242] text-[#CE4242] text-xs sm:text-sm flex items-start gap-3 shadow-sketch-sm"
-          >
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span className="font-semibold block">Action Required:</span>
-              <span>{serverError}</span>
-            </div>
-            <button
-              onClick={() => setServerError(null)}
-              className="text-[#CE4242] hover:text-[#991B1B] p-1"
-              aria-label="Dismiss error"
+          <div className="mb-3 shrink-0">
+            <Banner
+              type="error"
+              onClose={() => setServerError('')}
             >
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
+              {serverError}
+            </Banner>
+          </div>
         )}
 
-        {/* Success Alert Banner */}
         {successMessage && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-6 p-4 rounded-xl bg-[#F0F7F3] border-2 border-[#2E8557] text-[#2E8557] text-sm flex items-center gap-3 shadow-sketch-sm"
-          >
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-            <span className="font-semibold">{successMessage}</span>
-          </motion.div>
+          <div className="mb-3 shrink-0">
+            <Banner type="success">
+              {successMessage}
+            </Banner>
+          </div>
         )}
 
-        {/* Main 2-Column Grid: Form Controls (Left) + Live Character Preview (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 items-start">
-          
-          {/* Left Column: Form with all 3 required fields on ONE screen */}
-          <div className="lg:col-span-7 space-y-6">
-            <Card variant="default" padding="lg">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                
-                {/* ========================================================= */}
-                {/* FIELD 1: GAME NICKNAME                                   */}
-                {/* ========================================================= */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label
-                      htmlFor="player-nickname"
-                      className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-2"
-                    >
-                      <User className="w-3.5 h-3.5 text-[#2B68B4]" />
-                      <span>1. Game Nickname</span>
-                      <span className="text-[#CE4242] font-bold">*</span>
-                    </label>
 
-                    <div className="flex items-center gap-2">
-                      {nicknameAvailability.checking && (
-                        <span className="text-[10px] font-mono text-[#5C6069] flex items-center gap-1">
-                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                          Checking...
+        {/* ============================================ */}
+        {/* MAIN CONTENT */}
+        {/* ============================================ */}
+
+        <div className="
+          grid grid-cols-1 lg:grid-cols-12
+          gap-5 lg:gap-8
+          items-start
+          flex-1
+        ">
+
+          {/* LEFT: PROFILE FORM */}
+
+          <div className="lg:col-span-7 min-w-0">
+
+            <form
+              onSubmit={handleSubmit}
+              className="
+                rounded-2xl
+                border border-[#DED7C9]
+                bg-[#FFFEFA]
+                shadow-[0_4px_20px_rgba(35,37,42,0.04)]
+                overflow-hidden
+              "
+            >
+
+              <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-7">
+
+                {/* ------------------------------------ */}
+                {/* 01. NICKNAME */}
+                {/* ------------------------------------ */}
+
+                <section>
+                  <div className="
+                    flex items-center justify-between
+                    gap-2 mb-3
+                  ">
+                    <div>
+                      <div className="
+                        flex items-center gap-2
+                        text-sm font-bold
+                        text-[#23252A]
+                      ">
+                        <span className="
+                          w-6 h-6 rounded-lg
+                          bg-[#EAF0F8]
+                          text-[#2B68B4]
+                          flex items-center justify-center
+                          text-[11px] font-bold
+                        ">
+                          01
                         </span>
-                      )}
-                      {nicknameAvailability.checked && !nicknameAvailability.checking && (
-                        <span
-                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold ${
-                            nicknameAvailability.available
-                              ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]'
-                              : 'bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]'
-                          }`}
-                        >
-                          {nicknameAvailability.available ? '✓ Available' : '✕ Taken'}
-                        </span>
-                      )}
-                      <span
-                        className={`text-xs font-mono ${
-                          nickname.length > 24
-                            ? 'text-[#CE4242] font-bold'
-                            : 'text-[#8E949F]'
-                        }`}
-                      >
-                        {nickname.length}/24
-                      </span>
+
+                        Game nickname
+                        <span className="text-[#CE4242]">*</span>
+                      </div>
+
+                      <p className="
+                        text-[11px] text-[#8A857D]
+                        ml-8 mt-0.5
+                      ">
+                        This is how other players will know you.
+                      </p>
                     </div>
+
+                    <span className="
+                      text-[10px] font-mono
+                      text-[#969087] shrink-0
+                    ">
+                      {nickname.length}/24
+                    </span>
                   </div>
+
 
                   <Input
                     id="player-nickname"
                     value={nickname}
                     onChange={(e) => {
                       setNickname(e.target.value);
-                      setTouched(prev => ({ ...prev, nickname: true }));
-                      setServerError(null);
+                      setTouched(prev => ({
+                        ...prev,
+                        nickname: true
+                      }));
+                      setServerError('');
                     }}
-                    placeholder="Enter your custom call-sign (e.g. SharpShooter)"
+                    placeholder="Enter your player nickname"
                     maxLength={24}
-                    error={touched.nickname && !nicknameVal.isValid ? nicknameVal.error : null}
                     autoFocus={!isEditingExisting}
+                    error={
+                      touched.nickname && !nicknameVal.isValid
+                        ? nicknameVal.error
+                        : null
+                    }
+                    className="
+                      [&_input]:min-h-[46px]
+                      [&_input]:rounded-xl
+                      [&_input]:text-sm
+                    "
                   />
 
-                  {/* Real-time trimming feedback indicator */}
-                  {nicknameVal.hasLeadingTrailingSpaces && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#D59926] font-sans">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      <span>Spaces at beginning/end will be trimmed automatically.</span>
-                    </div>
-                  )}
 
-                  <div className="mt-2 text-[11px] font-sans text-[#5C6069] flex items-center justify-between">
-                    <span>2–24 characters (letters, numbers, spaces, - and _)</span>
+                  {/* Nickname availability */}
+
+                  <div className="
+                    min-h-6 mt-1.5
+                    flex items-center justify-between gap-2
+                  ">
+                    <div className="min-w-0">
+                      {nicknameStatus && (
+                        <div className={`
+                          flex items-center gap-1
+                          text-[10px] font-medium
+                          ${
+                            nicknameStatus.type === 'success'
+                              ? 'text-[#278052]'
+                              : nicknameStatus.type === 'error'
+                                ? 'text-[#CE4242]'
+                                : 'text-[#858078]'
+                          }
+                        `}>
+                          {nicknameStatus.type === 'loading' ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : nicknameStatus.type === 'success' ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+
+                          <span>{nicknameStatus.label}</span>
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleRandomize}
-                      className="text-xs font-handwriting text-[#2B68B4] hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                      className="
+                        flex items-center gap-1
+                        text-[11px] font-semibold
+                        text-[#2B68B4]
+                        hover:text-[#174B8C]
+                        transition-colors
+                        shrink-0
+                      "
                     >
                       <RefreshCw className="w-3 h-3" />
-                      <span>Random Suggestion</span>
+                      Suggest one
                     </button>
                   </div>
-                </div>
 
-                {/* ========================================================= */}
-                {/* FIELD 2: CHARACTER COLOUR                                */}
-                {/* ========================================================= */}
-                <div className="pt-5 border-t border-[#D5CFC3]">
-                  <div className="mb-2">
-                    <span className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-[#2B68B4]" />
-                      <span>2. Character Colour</span>
-                      <span className="text-[#CE4242] font-bold">*</span>
-                    </span>
+                  <p className="
+                    text-[10px] text-[#99938A]
+                    mt-1
+                  ">
+                    2–24 characters · Letters, numbers, - and _
+                  </p>
+                </section>
+
+
+                {/* DIVIDER */}
+
+                <div className="border-t border-[#EAE5DA]" />
+
+
+                {/* ------------------------------------ */}
+                {/* 02. CHARACTER COLOUR */}
+                {/* ------------------------------------ */}
+
+                <section>
+                  <div className="mb-3">
+                    <div className="
+                      flex items-center gap-2
+                      text-sm font-bold
+                      text-[#23252A]
+                    ">
+                      <span className="
+                        w-6 h-6 rounded-lg
+                        bg-[#F3EDF9]
+                        text-[#8452A5]
+                        flex items-center justify-center
+                        text-[11px] font-bold
+                      ">
+                        02
+                      </span>
+
+                      Character colour
+                      <span className="text-[#CE4242]">*</span>
+                    </div>
+
+                    <p className="
+                      text-[11px] text-[#8A857D]
+                      ml-8 mt-0.5
+                    ">
+                      Choose your signature pencil shade.
+                    </p>
                   </div>
 
                   <ColorFamilySelector
                     selectedColor={colorFamily}
                     onSelectColor={(id) => {
                       setColorFamily(id);
-                      setServerError(null);
+                      setServerError('');
                     }}
                   />
-                </div>
 
-                {/* ========================================================= */}
-                {/* FIELD 3: DATE OF BIRTH (DOB)                             */}
-                {/* ========================================================= */}
-                <div className="pt-5 border-t border-[#D5CFC3]">
-                  <div className="mb-1.5">
-                    <label
-                      htmlFor="player-dob"
-                      className="text-xs uppercase tracking-wider font-semibold text-[#23252A] flex items-center gap-2"
-                    >
-                      <Calendar className="w-3.5 h-3.5 text-[#2B68B4]" />
-                      <span>3. Date of Birth (DOB)</span>
-                      <span className="text-[#CE4242] font-bold">*</span>
-                    </label>
+                </section>
+
+
+                {/* DIVIDER */}
+
+                <div className="border-t border-[#EAE5DA]" />
+
+
+                {/* ------------------------------------ */}
+                {/* 03. DATE OF BIRTH */}
+                {/* ------------------------------------ */}
+
+                <section>
+                  <div className="mb-2">
+                    <div className="
+                      flex items-center gap-2
+                      text-sm font-bold
+                      text-[#23252A]
+                    ">
+                      <span className="
+                        w-6 h-6 rounded-lg
+                        bg-[#EAF4F0]
+                        text-[#39866B]
+                        flex items-center justify-center
+                        text-[11px] font-bold
+                      ">
+                        03
+                      </span>
+
+                      Date of birth
+                      <span className="text-[#CE4242]">*</span>
+                    </div>
+
+                    <p className="
+                      text-[11px] text-[#8A857D]
+                      ml-8 mt-0.5
+                    ">
+                      Select your date using the scrolling wheels.
+                    </p>
                   </div>
 
-                  <div className="mt-2">
+                  <div className="
+                    w-full rounded-xl
+                    bg-[#FAF9F5]
+                    border border-[#EEEAE1]
+                    py-2
+                  ">
                     <ScrollableDobPicker
                       value={dob}
                       onChange={(newDob) => {
                         setDob(newDob);
-                        setTouched(prev => ({ ...prev, dob: true }));
-                        setServerError(null);
+
+                        setTouched(prev => ({
+                          ...prev,
+                          dob: true
+                        }));
+
+                        setServerError('');
                       }}
                     />
                   </div>
 
                   {touched.dob && !dobVal.isValid && (
-                    <p className="mt-2 text-xs text-[#CE4242] font-mono flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{dobVal.error}</span>
+                    <p className="
+                      mt-2 text-[11px]
+                      text-[#CE4242]
+                      flex items-center gap-1
+                    ">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      {dobVal.error}
                     </p>
                   )}
-                </div>
 
-                {/* ========================================================= */}
-                {/* SUBMISSION & ACTIONS                                      */}
-                {/* ========================================================= */}
-                <div className="pt-6 border-t border-[#D5CFC3] flex flex-col sm:flex-row items-center justify-between gap-3">
-                  {isEditingExisting ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => navigate('/profile')}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto"
-                    >
-                      Cancel
-                    </Button>
-                  ) : (
-                    <div className="text-xs font-mono text-[#8E949F]">
-                      ALL 3 DETAILS REQUIRED
-                    </div>
-                  )}
+                </section>
 
+              </div>
+
+
+              {/* ====================================== */}
+              {/* FORM FOOTER / STICKY ACTION */}
+              {/* ====================================== */}
+
+              <div className="
+                sticky bottom-0 z-20
+                p-3 sm:p-4
+                border-t border-[#EAE5DA]
+                bg-[#FFFEFA]/95
+                backdrop-blur-md
+                flex flex-col-reverse sm:flex-row
+                items-center justify-between gap-2
+              ">
+
+                {isEditingExisting ? (
                   <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    disabled={isSubmitting || !isFormValid}
-                    icon={ArrowRight}
-                    iconPosition="right"
-                    className="w-full sm:w-auto shadow-sketch-dark"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => navigate('/profile')}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto text-xs"
                   >
-                    {isSubmitting ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Saving Profile...</span>
-                      </span>
-                    ) : isEditingExisting ? (
-                      'SAVE CHANGES'
-                    ) : (
-                      'CREATE MY PLAYER PROFILE'
-                    )}
+                    Cancel
                   </Button>
-                </div>
-              </form>
-            </Card>
+                ) : (
+                  <div className="
+                    hidden sm:flex items-center gap-1.5
+                    text-[10px] font-medium
+                    text-[#969087]
+                  ">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Your identity is ready to be created
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={!isFormValid || isSubmitting}
+                  icon={ArrowRight}
+                  iconPosition="right"
+                  className="
+                    w-full sm:w-auto
+                    min-h-[46px]
+                    px-6
+                    text-xs sm:text-sm
+                    font-bold
+                    shadow-sketch-dark
+                  "
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : isEditingExisting ? (
+                    'SAVE CHANGES'
+                  ) : (
+                    'CREATE PLAYER PROFILE'
+                  )}
+                </Button>
+
+              </div>
+
+            </form>
+
+
+            {/* Mobile helper text */}
+
+            <p className="
+              lg:hidden text-center
+              text-[10px] text-[#969087]
+              mt-3 mb-3
+            ">
+              <ShieldCheck className="w-3 h-3 inline mr-1" />
+              Your player identity will be saved securely.
+            </p>
+
           </div>
 
-          {/* Right Column: Live 2D Hand-Drawn Character Preview */}
-          <div className="lg:col-span-5 flex flex-col items-center">
-            <div className="sticky top-20 w-full space-y-4">
+
+          {/* ========================================== */}
+          {/* RIGHT: DESKTOP CHARACTER PREVIEW */}
+          {/* ========================================== */}
+
+          <aside className="
+            hidden lg:flex
+            lg:col-span-5
+            flex-col items-center
+            sticky top-8
+            min-w-0
+          ">
+
+            <div className="
+              w-full rounded-2xl
+              border border-[#DED7C9]
+              bg-[#FFFEFA]
+              p-5
+              shadow-[0_4px_20px_rgba(35,37,42,0.04)]
+            ">
+
+              <div className="
+                flex items-center justify-between
+                mb-4
+              ">
+                <div>
+                  <h2 className="
+                    text-sm font-bold
+                    text-[#23252A]
+                  ">
+                    Your player preview
+                  </h2>
+
+                  <p className="
+                    text-[11px] text-[#8A857D] mt-0.5
+                  ">
+                    Your identity in ODD WAR
+                  </p>
+                </div>
+
+                <Sparkles className="w-4 h-4 text-[#B18A4D]" />
+              </div>
+
               <CharacterPreview
                 nickname={nickname || 'Your Warrior'}
                 colorFamily={colorFamily}
               />
 
-              <Card variant="ruled" padding="sm" className="text-center">
-                <div className="font-handwriting font-bold text-sm text-[#23252A]">
-                  Authoritative Pencil Station
+              <div className="
+                mt-5 pt-4
+                border-t border-[#EAE5DA]
+              ">
+                <div className="
+                  flex items-center gap-2
+                  text-xs font-semibold
+                  text-[#23252A]
+                ">
+                  <Pencil className="w-3.5 h-3.5 text-[#2B68B4]" />
+                  Your battlefield identity
                 </div>
-                <div className="font-mono text-[10px] text-[#5C6069] mt-0.5">
-                  Your nickname, color, and stats will synchronize across all ODD WARS matches.
-                </div>
-              </Card>
+
+                <p className="
+                  text-[11px] text-[#858078]
+                  leading-relaxed mt-1.5
+                ">
+                  Your nickname and selected pencil colour
+                  will represent you across ODD WAR matches.
+                </p>
+              </div>
+
             </div>
-          </div>
+
+          </aside>
+
         </div>
 
+
+        {/* ============================================ */}
+        {/* BOTTOM BRANDING */}
+        {/* ============================================ */}
+
+        <footer className="
+          hidden sm:flex
+          items-center justify-between
+          mt-6 pt-4
+          border-t border-[#D5CFC3]/60
+          text-[10px] text-[#969087]
+          shrink-0
+        ">
+          <span>ODD WAR · PLAYER REGISTRATION</span>
+
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3" />
+            PLAYER IDENTITY
+          </span>
+        </footer>
+
       </div>
+
     </NotebookBackground>
   );
 };

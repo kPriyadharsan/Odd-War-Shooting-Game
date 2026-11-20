@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Info } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { COLOR_LIST } from '../../config/colors.js';
 import { soundEffects } from '../../services/soundEffects.js';
 
@@ -10,19 +10,15 @@ export const ColorFamilySelector = ({
   className = ''
 }) => {
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-1 sm:space-y-2.5 ${className}`}>
       <div className="flex items-center justify-between">
-        <label className="text-xs uppercase tracking-wider font-semibold text-[#5C6069] flex items-center gap-1.5">
-          <span>Choose Primary Color Family</span>
-          <span className="text-[11px] font-mono font-normal text-[#8E949F]">(5 Families)</span>
-        </label>
-        <span className="text-xs font-mono text-[#2B68B4]">
+        <span className="text-[11px] sm:text-xs font-mono text-[#2B68B4] font-bold">
           {selectedColor} SELECTED
         </span>
       </div>
 
-      {/* 5 Color family cards */}
-      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2.5 sm:gap-3">
+      {/* 5 Color family cards - compact single row on mobile, full cards on desktop */}
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
         {COLOR_LIST.map((family) => {
           const isSelected = selectedColor.toUpperCase() === family.id;
           return (
@@ -30,64 +26,62 @@ export const ColorFamilySelector = ({
               key={family.id}
               type="button"
               whileHover={{ y: -2 }}
-              whileTap={{ y: 0 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 soundEffects.playButtonClick();
                 onSelectColor(family.id);
               }}
-              className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all select-none min-h-[95px] cursor-pointer ${
-                isSelected
-                  ? 'border-2 border-[#23252A] bg-[#FFFDF9] shadow-sketch'
-                  : 'border-[#D5CFC3] bg-[#FCFAF3] hover:border-[#9C9486] hover:bg-[#FFFDF9]'
-              }`}
+              className={`
+                relative p-1.5 sm:p-3.5 rounded-xl sm:rounded-2xl border text-center sm:text-left
+                flex flex-col items-center sm:items-start justify-center sm:justify-between
+                transition-all duration-200 select-none min-h-[46px] sm:min-h-[105px] cursor-pointer
+                ${isSelected
+                  ? 'border-[#23252A] bg-white shadow-md ring-2 ring-[#23252A]/20'
+                  : 'border-[#E5E1D8] bg-[#FCFAF5] hover:border-[#B8B1A5] hover:bg-white'
+                }
+              `}
             >
-              <div className="flex items-center justify-between mb-2">
+              {/* Top row: Color circle and selection indicator */}
+              <div className="flex items-center justify-center sm:justify-between w-full mb-0.5 sm:mb-3">
                 {/* Primary Color Swatch */}
                 <div
-                  className="w-6 h-6 rounded-full border border-[#23252A]/20 shadow-sm flex items-center justify-center"
+                  className={`
+                    w-6 h-6 sm:w-8 sm:h-8 shrink-0 rounded-full
+                    border border-black/10 shadow-sm flex items-center justify-center
+                    transition-transform duration-200
+                    ${isSelected ? 'scale-110 shadow-[0_0_8px_rgba(0,0,0,0.2)]' : ''}
+                  `}
                   style={{ backgroundColor: family.hex }}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  {isSelected && (
+                    <Check className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                  )}
                 </div>
 
-                {isSelected && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#23252A] text-[#F8F4EB]">
-                    ACTIVE
-                  </span>
-                )}
+                {/* Minimal selected indicator on desktop */}
+                <div
+                  className={`
+                    hidden sm:flex w-5 h-5 shrink-0 rounded-full
+                    items-center justify-center transition-all duration-200
+                    ${isSelected
+                      ? 'bg-[#23252A] text-white'
+                      : 'border border-[#D5CFC3] bg-transparent'
+                    }
+                  `}
+                >
+                  {isSelected && <Check className="w-3 h-3" />}
+                </div>
               </div>
 
-              <div>
-                <div className="font-handwriting font-bold text-base text-[#23252A] leading-tight">
+              {/* Color information */}
+              <div className="min-w-0 w-full text-center sm:text-left">
+                <div className="font-semibold text-[10px] sm:text-[15px] text-[#23252A] leading-tight truncate">
                   {family.name}
                 </div>
-                <div className="text-[10px] font-mono text-[#5C6069]">
-                  {family.label}
-                </div>
-              </div>
-
-              {/* Future Room Shades Preview Bar */}
-              <div className="mt-2.5 pt-2 border-t border-[#D5CFC3]/60 flex items-center gap-1" title="Room shades preview">
-                {family.shades.map((shade) => (
-                  <span
-                    key={shade.id}
-                    className="flex-1 h-1.5 rounded-full"
-                    style={{ backgroundColor: shade.hex }}
-                    title={`${shade.name} (${shade.hex})`}
-                  />
-                ))}
               </div>
             </motion.button>
           );
         })}
-      </div>
-
-      {/* Architectural note for future room shade compatibility */}
-      <div className="p-2.5 rounded-lg bg-[#EFE8DA]/50 border border-[#D5CFC3] text-[11px] font-sans text-[#5C6069] flex items-start gap-2">
-        <Info className="w-3.5 h-3.5 text-[#2B68B4] shrink-0 mt-0.5" />
-        <span>
-          <strong>Room Shade Compatibility:</strong> Your choice sets your squad's primary color family. If multiple players in a 2–4 player room pick the same family, the room engine automatically assigns distinct shades (e.g. Navy, Medium, Sky, Pale).
-        </span>
       </div>
     </div>
   );
