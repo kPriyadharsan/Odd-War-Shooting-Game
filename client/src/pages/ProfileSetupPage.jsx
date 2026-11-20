@@ -537,25 +537,7 @@ export const ProfileSetupPage = () => {
             shrink-0
           "
         >
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-[#23252A] text-white flex items-center justify-center shadow-sketch-sm">
-              <Pencil className="w-3.5 h-3.5 text-[#F8F4EB]" />
-            </div>
-            <div>
-              <span className="font-handwriting font-bold text-lg sm:text-xl text-[#23252A] block leading-tight">
-                ODD WAR
-              </span>
-              <span className="text-[10px] font-mono text-[#77736C] hidden sm:block">
-                Choose your nickname, color, and birth date
-              </span>
-            </div>
-            {isAuthenticated && user?.email && (
-              <span className="text-[10px] font-mono text-[#278052] bg-[#EAF5ED] px-2 py-0.5 rounded-full flex items-center gap-1 sm:hidden">
-                <ShieldCheck className="w-3 h-3" />
-                Connected
-              </span>
-            )}
-          </div>
+
 
           {/* Reserved spacer on mobile so floating preview badge doesn't overlap header content */}
           <div className="w-36 h-9 shrink-0 lg:hidden">
