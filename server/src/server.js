@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'url';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
@@ -16,10 +17,17 @@ const app = express();
 const server = http.createServer(app);
 
 // Security & Parsing Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false
+}));
 app.use(cors({
-  origin: config.clientUrl,
-  credentials: true
+  origin: (origin, callback) => {
+    // Permissive CORS for development, local network mobile testing, and direct tool testing
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -33,20 +41,27 @@ app.use((req, res, next) => {
 // Root & Health check routes directly accessible
 app.use('/health', healthRoutes);
 
-// Mount API routes under /api
+// Mount API routes under /api and root / for universal compatibility
 app.use('/api', apiRoutes);
+app.use('/rooms', (req, res, next) => {
+  // Direct fallback if called without /api prefix
+  req.url = `/rooms${req.url}`;
+  return apiRoutes(req, res, next);
+});
 
 // 404 & Error Handlers
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Bootstrap Function
-export const startServer = async () => {
+export const startServer = async (portOverride) => {
   try {
+    const activePort = portOverride || parseInt(process.env.PORT || config.port, 10);
+
     logger.info('==========================================');
     logger.info('     ODD WARS GAME SERVER INITIALIZING    ');
     logger.info('==========================================');
-    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || config.nodeEnv}`);
     logger.info(`Configured Client URL: ${config.clientUrl}`);
 
     // Initialize Database (non-blocking dev mode)
@@ -62,9 +77,9 @@ export const startServer = async () => {
     const gameEngine = new GameEngine(io);
 
     // Start HTTP Server
-    server.listen(config.port, () => {
-      logger.info(`[Server] Express + Socket.IO server running on port ${config.port}`);
-      logger.info(`[Server] Health Check available at http://localhost:${config.port}/health or http://localhost:${config.port}/api/health`);
+    server.listen(activePort, () => {
+      logger.info(`[Server] Express + Socket.IO server running on port ${activePort}`);
+      logger.info(`[Server] Health Check available at http://localhost:${activePort}/health or http://localhost:${activePort}/api/health`);
     });
 
     return { server, app, io, gameEngine };
@@ -86,7 +101,11 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-// Auto-start when executed directly
-if (process.env.NODE_ENV !== 'test') {
+// Auto-start only when executed directly as entrypoint
+const isDirectEntry = process.argv[1] && (
+  fileURLToPath(import.meta.url).replace(/\\/g, '/') === process.argv[1].replace(/\\/g, '/')
+);
+
+if (isDirectEntry && process.env.NODE_ENV !== 'test') {
   startServer();
 }

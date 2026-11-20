@@ -39,9 +39,13 @@ export function App() {
           <Route path="rooms/:code/waiting" element={<WaitingRoomPage />} />
           <Route path="rooms/:code/summary" element={<RoomSummaryPage />} />
 
-          {/* Notebook Battlefield (Task 07) */}
+          {/* Notebook Battlefield (Task 07, 10, 11) */}
           <Route path="rooms/:code/battlefield" element={<BattlefieldPage />} />
           <Route path="rooms/:code/game" element={<BattlefieldPage />} />
+          <Route path="rooms/:code/play" element={<BattlefieldPage />} />
+          <Route path="rooms/:code/playing" element={<BattlefieldPage />} />
+          <Route path="game/:code" element={<BattlefieldPage />} />
+          <Route path="battlefield/:code" element={<BattlefieldPage />} />
 
           {/* Design System Preview (Task 02) */}
           <Route path="design-system" element={<DesignSystemPreview />} />

@@ -78,6 +78,10 @@ export const WaitingRoomPage = () => {
         const initialData = await roomApi.getRoomByCode(roomCode);
         if (isMounted) {
           setRoom(initialData);
+          if (initialData?.status === 'STARTING' || initialData?.status === 'PLAYING') {
+            navigate(`/rooms/${initialData.code}/battlefield`);
+            return;
+          }
         }
 
         // Connect socket & emit room:join
@@ -161,7 +165,13 @@ export const WaitingRoomPage = () => {
       if (!isMounted) return;
       if (startedRoom) setRoom(startedRoom);
       setMatchStartingBanner(true);
-      showNotification(message || 'Match starting!');
+      showNotification(message || 'Match starting! Entering notebook battlefield...');
+      soundEffects.playBookEntrance();
+      setTimeout(() => {
+        if (isMounted) {
+          navigate(`/rooms/${startedRoom?.code || roomCode}/battlefield`);
+        }
+      }, 750);
     };
 
     socket.on('room:state', handleRoomState);
@@ -174,6 +184,8 @@ export const WaitingRoomPage = () => {
     socket.on('room:kicked', handleKicked);
     socket.on('room:match_starting', handleMatchStarting);
     socket.on('MATCH_STARTING', handleMatchStarting);
+    socket.on('MATCH_STARTED', handleMatchStarting);
+    socket.on('room:started', handleMatchStarting);
 
     return () => {
       isMounted = false;
@@ -187,8 +199,20 @@ export const WaitingRoomPage = () => {
       socket.off('room:kicked', handleKicked);
       socket.off('room:match_starting', handleMatchStarting);
       socket.off('MATCH_STARTING', handleMatchStarting);
+      socket.off('MATCH_STARTED', handleMatchStarting);
+      socket.off('room:started', handleMatchStarting);
     };
   }, [roomCode, currentPlayer.playerId]);
+
+  // If match transitions to STARTING or PLAYING, auto-enter battlefield arena
+  useEffect(() => {
+    if (room && (room.status === 'STARTING' || room.status === 'PLAYING')) {
+      const timer = setTimeout(() => {
+        navigate(`/rooms/${room.code}/battlefield`);
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, [room?.status, room?.code, navigate]);
 
   const handleCopyCode = () => {
     if (room?.code) {
@@ -319,6 +343,9 @@ export const WaitingRoomPage = () => {
       setRoom(started);
       setMatchStartingBanner(true);
       showNotification('Match started! Preparing notebook battlefield...');
+      setTimeout(() => {
+        navigate(`/rooms/${started?.code || room.code}/battlefield`);
+      }, 750);
     } catch (err) {
       showNotification(err.message || 'Failed to start match');
     } finally {

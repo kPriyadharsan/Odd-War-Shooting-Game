@@ -28,6 +28,15 @@ router.get('/public', listPublicRooms);
 // Private rooms
 router.post('/private', createPrivateRoom);
 
+// Collection root fallback endpoints (/api/rooms and /rooms)
+router.post('/', (req, res, next) => {
+  if (req.body?.isPrivate || req.body?.password) {
+    return createPrivateRoom(req, res, next);
+  }
+  return createPublicRoom(req, res, next);
+});
+router.get('/', listPublicRooms);
+
 // Join & Leave
 router.post('/join', joinRoom);
 router.get('/:code', getRoomByCode);

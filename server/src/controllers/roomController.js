@@ -5,16 +5,24 @@ import { sendSuccess, sendError } from '../utils/response.js';
 
 // Zod Validation Schemas
 const playerSchema = z.object({
-  playerId: z.string().min(1, 'Player ID is required'),
-  nickname: z.string().min(3, 'Nickname must be at least 3 characters').max(16, 'Nickname cannot exceed 16 characters'),
+  playerId: z.string().min(1, 'Player ID is required').default(() => `player_${Math.random().toString(36).substring(2, 9)}`),
+  nickname: z.string().min(2, 'Nickname must be at least 2 characters').max(20, 'Nickname cannot exceed 20 characters').default('Host Warrior'),
   primaryColor: z.enum(['RED', 'GREEN', 'BLUE', 'YELLOW', 'BLACK']).default('BLUE')
+}).default({
+  playerId: `player_${Math.random().toString(36).substring(2, 9)}`,
+  nickname: 'Host Warrior',
+  primaryColor: 'BLUE'
 });
 
 const createPublicSchema = z.object({
   name: z.string().min(3, 'Room name must be at least 3 characters').max(32, 'Room name cannot exceed 32 characters'),
   maxPlayers: z.number().int().refine(n => [2, 3, 4].includes(n), { message: 'Player capacity must be 2, 3, or 4 players' }).default(4),
   bookPageCount: z.number().int().refine(n => [100, 200].includes(n), { message: 'Book page count must be either 100 or 200 pages' }).default(100),
-  player: playerSchema
+  player: playerSchema.optional().default({
+    playerId: `player_${Math.random().toString(36).substring(2, 9)}`,
+    nickname: 'Host Warrior',
+    primaryColor: 'BLUE'
+  })
 });
 
 const createPrivateSchema = z.object({
@@ -22,7 +30,11 @@ const createPrivateSchema = z.object({
   password: z.string().min(3, 'Password must be at least 3 characters').max(32, 'Password cannot exceed 32 characters'),
   maxPlayers: z.number().int().refine(n => [2, 3, 4].includes(n), { message: 'Player capacity must be 2, 3, or 4 players' }).default(4),
   bookPageCount: z.number().int().refine(n => [100, 200].includes(n), { message: 'Book page count must be either 100 or 200 pages' }).default(100),
-  player: playerSchema
+  player: playerSchema.optional().default({
+    playerId: `player_${Math.random().toString(36).substring(2, 9)}`,
+    nickname: 'Host Warrior',
+    primaryColor: 'BLUE'
+  })
 });
 
 const updateSettingsSchema = z.object({
