@@ -11,7 +11,7 @@ export const ColorFamilySelector = ({
 }) => {
   return (
     <div className={`space-y-1 sm:space-y-2.5 ${className}`}>
-      <div className="hidden sm:flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <span className="text-[11px] sm:text-xs font-mono text-[#2B68B4] font-bold">
           {selectedColor} SELECTED
         </span>

@@ -204,7 +204,10 @@ export const CharacterSvg = ({
 
 
 /**
- * Compact Mobile On-Screen Popup Live Character Preview
+ * Compact Mobile On-Screen Character Preview
+ * Now uses absolute positioning within its parent container
+ * instead of fixed/viewport-anchored positioning.
+ * Parent must have position: relative.
  */
 export const CharacterPopupPreview = ({
   nickname = 'Warrior',
@@ -219,30 +222,37 @@ export const CharacterPopupPreview = ({
     <motion.div
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`fixed z-[99999] px-2 py-1 rounded-xl border-2 bg-[#FCFAF3] shadow-sketch-sm flex items-center gap-2 select-none cursor-pointer transition-all ${className}`}
+      className={`
+        absolute z-20
+        top-1 right-0
+        flex items-center gap-2
+        px-2.5 py-1.5
+        rounded-xl border-2
+        bg-[#FCFAF3]
+        shadow-sketch-sm
+        select-none cursor-pointer
+        transition-all
+        ${className}
+      `}
       style={{
         borderColor: color.hex,
-        boxShadow: `0 0 10px ${color.hex}30`,
-
-        // MANUAL POSITION CONTROLS
-        // Preserves your original position on larger screens.
-        // Adjusts only when the viewport is too narrow.
-        top: '100px',
-        left: 'min(270px, calc(100vw - 145px))'
+        boxShadow: `0 2px 12px ${color.hex}30, 1px 1px 0 #D5CFC3`,
+        minWidth: 130,
+        maxWidth: 165,
       }}
     >
       {/* Preview Badge */}
       <div
-        className="absolute -top-2 left-3 px-1.5 py-0.2 rounded-full text-[8px] font-mono font-bold text-white uppercase tracking-wider shadow-sm flex items-center gap-0.5"
+        className="absolute -top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold text-white uppercase tracking-wider shadow-sm"
         style={{ backgroundColor: color.hex }}
       >
-        <span>Preview</span>
+        Preview
       </div>
 
-      {/* Mini Character SVG */}
+      {/* Mini Character SVG — slightly bigger */}
       <motion.div
-        className="w-10 h-12 xs:w-11 xs:h-13 flex items-center justify-center shrink-0"
-        animate={{ y: [0, -2, 0] }}
+        className="w-12 h-14 flex items-center justify-center shrink-0"
+        animate={{ y: [0, -2.5, 0] }}
         transition={{
           duration: 2.5,
           repeat: Infinity,
@@ -255,13 +265,13 @@ export const CharacterPopupPreview = ({
       {/* Color & Nickname Info */}
       <div className="flex flex-col min-w-0 pr-1">
         <span
-          className="text-[9px] font-mono font-bold uppercase tracking-wider truncate max-w-[70px]"
+          className="text-[9px] font-mono font-bold uppercase tracking-wider truncate max-w-[80px]"
           style={{ color: color.hex }}
         >
           {color.name}
         </span>
 
-        <span className="text-xs font-handwriting font-bold text-[#23252A] truncate max-w-[75px]">
+        <span className="text-[13px] font-handwriting font-bold text-[#23252A] truncate max-w-[80px]">
           {displayName}
         </span>
       </div>
@@ -285,11 +295,10 @@ export const CharacterPreview = ({
     <div
       className={`relative w-full max-w-sm mx-auto bg-[#FCFAF3] border-2 border-[#23252A] rounded-2xl p-6 shadow-paper-lg flex flex-col items-center select-none ${className}`}
     >
-      
 
       {/* Character Preview */}
       <motion.div
-        className="relative w-48 h-56 sm:w-56 sm:h-64 my-2 flex items-center justify-center card-ruled rounded-xl border border-dashed border-[#D5CFC3] p-4"
+        className="relative w-48 h-60 sm:w-56 sm:h-64 my-2 flex items-center justify-center card-ruled rounded-xl border border-dashed border-[#D5CFC3] p-4"
         animate={{ y: [0, -4, 0] }}
         transition={{
           duration: 3,
