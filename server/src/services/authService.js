@@ -17,13 +17,17 @@ const signPayload = (payloadString) => {
   return crypto.createHmac('sha256', config.jwtSecret).update(payloadString).digest('base64url');
 };
 
-const CANONICAL_PRODUCTION_FRONTEND = 'https://odd-wars.vercel.app';
+const CANONICAL_PRODUCTION_FRONTENDS = [
+  'https://odd-wars.vercel.app',
+  'https://odd-war.vercel.app'
+];
+const CANONICAL_DEFAULT_FRONTEND = 'https://odd-wars.vercel.app';
 const CANONICAL_LOCAL_FRONTEND = 'http://localhost:5173';
 
 /**
  * Dynamically resolves the frontend origin where the client application is hosted.
- * Strictly enforces canonical production domain (https://odd-wars.vercel.app) in production
- * and on Render cloud hosting, preventing any legacy aliases or localhost leakage.
+ * Accurately supports canonical production domains (odd-wars.vercel.app & odd-war.vercel.app)
+ * and detects reverse proxy forwarded headers or query origin.
  */
 export const resolveFrontendOrigin = (req) => {
   // 1. Explicit CLIENT_URL environment variable (if explicitly configured and not localhost)
@@ -39,8 +43,8 @@ export const resolveFrontendOrigin = (req) => {
   const queryOrigin = req?.query?.origin;
   if (queryOrigin && typeof queryOrigin === 'string') {
     const cleanQueryOrigin = queryOrigin.trim().replace(/\/+$/, '');
-    if (cleanQueryOrigin === CANONICAL_PRODUCTION_FRONTEND) {
-      return CANONICAL_PRODUCTION_FRONTEND;
+    if (CANONICAL_PRODUCTION_FRONTENDS.includes(cleanQueryOrigin)) {
+      return cleanQueryOrigin;
     }
     // Only permit localhost when running purely in local development (not on Render)
     if (!isHostedOnRender && (cleanQueryOrigin === CANONICAL_LOCAL_FRONTEND || cleanQueryOrigin === 'http://127.0.0.1:5173')) {
@@ -48,22 +52,36 @@ export const resolveFrontendOrigin = (req) => {
     }
   }
 
-  // 4. In production or on Render: ALWAYS enforce the canonical production domain (odd-wars.vercel.app)
-  if (isHostedOnRender) {
-    return CANONICAL_PRODUCTION_FRONTEND;
-  }
-
-  // 5. Local development fallback
+  // 4. Check reverse proxy headers (e.g. Vercel Edge proxying to Render)
   if (req) {
-    const referer = req.get ? req.get('referer') : req.headers?.['referer'];
-    if (referer && referer.includes('localhost')) {
-      try {
-        const parsed = new URL(referer);
-        return parsed.origin;
-      } catch {
-        // ignore
+    const rawForwardedHost = req.get ? req.get('x-forwarded-host') : req.headers?.['x-forwarded-host'];
+    if (rawForwardedHost) {
+      const forwardedHost = rawForwardedHost.split(',')[0].trim();
+      if (forwardedHost === 'odd-wars.vercel.app') {
+        return 'https://odd-wars.vercel.app';
+      }
+      if (forwardedHost === 'odd-war.vercel.app') {
+        return 'https://odd-war.vercel.app';
       }
     }
+
+    const referer = req.get ? req.get('referer') : req.headers?.['referer'];
+    if (referer) {
+      if (referer.includes('odd-wars.vercel.app')) return 'https://odd-wars.vercel.app';
+      if (referer.includes('odd-war.vercel.app')) return 'https://odd-war.vercel.app';
+      if (referer.includes('localhost') && !isHostedOnRender) {
+        try {
+          return new URL(referer).origin;
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  // 5. In production or on Render: default to canonical production domain
+  if (isHostedOnRender) {
+    return CANONICAL_DEFAULT_FRONTEND;
   }
 
   return CANONICAL_LOCAL_FRONTEND;
@@ -129,7 +147,7 @@ export const authService = {
     const authorizationUrl = client.generateAuthUrl({
       access_type: 'offline',
       scope: ['openid', 'email', 'profile'],
-      state,
+      state: transactionToken, // Embed the HMAC-signed transaction token into state for fail-safe recovery
       nonce,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
@@ -188,8 +206,8 @@ export const authService = {
       throw err;
     }
 
-    // State Validation
-    if (!returnedState || returnedState !== txData.state) {
+    // State Validation: Accept either the internal hex state OR the full signed transaction token
+    if (!returnedState || (returnedState !== txData.state && returnedState !== transactionToken)) {
       const err = new Error('Invalid OAuth state parameter. Possible Cross-Site Request Forgery.');
       err.statusCode = 400;
       throw err;

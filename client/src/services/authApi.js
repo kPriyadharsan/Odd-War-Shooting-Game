@@ -1,13 +1,27 @@
 import { config } from '../config/env.js';
 
-const API_BASE = config.apiUrl;
+/**
+ * Resolves the API base path. In browser environments, always prefers the same-origin relative '/api'
+ * path which works seamlessly across Vite dev proxy and Vercel production rewrites, ensuring
+ * cookies are first-party and completely eliminating cross-domain cookie dropping and timeouts.
+ */
+const getApiBase = () => {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    if (!config.apiUrl || config.apiUrl.includes('onrender.com') || config.apiUrl.startsWith('http')) {
+      return '/api';
+    }
+    return config.apiUrl;
+  }
+  return config.apiUrl || '/api';
+};
 
 export const authApi = {
   /**
    * Retrieves the currently authenticated user and session metadata.
    */
   getCurrentUser: async () => {
-    const res = await fetch(`${API_BASE}/auth/me`, {
+    const apiBase = getApiBase();
+    const res = await fetch(`${apiBase}/auth/me`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -30,7 +44,8 @@ export const authApi = {
    * Logs out the user on the server and clears session cookies.
    */
   logout: async () => {
-    const res = await fetch(`${API_BASE}/auth/logout`, {
+    const apiBase = getApiBase();
+    const res = await fetch(`${apiBase}/auth/logout`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json'
@@ -49,7 +64,8 @@ export const authApi = {
    * Updates player's profile (call-sign nickname and primary color) on the server.
    */
   updateProfile: async ({ nickname, primaryColor }) => {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
+    const apiBase = getApiBase();
+    const res = await fetch(`${apiBase}/auth/profile`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -73,6 +89,7 @@ export const authApi = {
    * and client origin to guarantee accurate production redirect URI resolution.
    */
   getGoogleLoginUrl: (guestPlayerId = null, returnTo = '/profile') => {
+    const apiBase = getApiBase();
     const params = new URLSearchParams();
     if (guestPlayerId) {
       params.set('guestPlayerId', guestPlayerId);
@@ -84,6 +101,6 @@ export const authApi = {
       params.set('origin', window.location.origin);
     }
     const queryString = params.toString();
-    return `${API_BASE}/auth/google${queryString ? `?${queryString}` : ''}`;
+    return `${apiBase}/auth/google${queryString ? `?${queryString}` : ''}`;
   }
 };

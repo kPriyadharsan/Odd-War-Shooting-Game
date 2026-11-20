@@ -5,7 +5,7 @@ process.env.JWT_SECRET = 'test_jwt_secret_for_odd_wars_oauth_verification';
 
 async function runTests() {
   console.log('================================================================');
-  console.log('   ODD WARS — PRODUCTION-READY AUTHENTICATION TEST SUITE       ');
+  console.log('   ODD WAR — PRODUCTION-READY AUTHENTICATION TEST SUITE       ');
   console.log('================================================================');
 
   const { authService } = await import('./src/services/authService.js');

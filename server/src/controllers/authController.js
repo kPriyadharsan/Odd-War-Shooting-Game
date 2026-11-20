@@ -84,10 +84,17 @@ export const handleGoogleCallback = async (req, res) => {
       return res.redirect(`${fallbackOrigin}/login?error=missing_code_or_state`);
     }
 
-    // 2. Validate and consume sealed transaction cookie
-    const transactionToken = req.cookies?.odd_wars_oauth_tx;
+    // 2. Validate and consume sealed transaction token
+    // Prefer transaction token from HttpOnly cookie; gracefully recover from signed state param
+    // to protect against reverse proxy / cross-domain cookie stripping (e.g. Render <-> Vercel)
+    let transactionToken = req.cookies?.odd_wars_oauth_tx;
+    if (!transactionToken && typeof state === 'string' && state.includes('.')) {
+      logger.info('[AuthController] OAuth cookie missing, recovering transaction token from verified state parameter');
+      transactionToken = state;
+    }
+
     if (!transactionToken) {
-      logger.warn('[AuthController] Missing OAuth transaction cookie in callback');
+      logger.warn('[AuthController] Missing OAuth transaction token in both cookie and state parameter');
       return res.redirect(`${fallbackOrigin}/login?error=session_expired`);
     }
 
