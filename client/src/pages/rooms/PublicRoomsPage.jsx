@@ -65,7 +65,7 @@ export const PublicRoomsPage = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-12">
-      <div className="max-w-6xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6 flex items-center justify-between">
@@ -78,7 +78,7 @@ export const PublicRoomsPage = () => {
           </Link>
 
           <Link to="/rooms/create">
-            <Button variant="primary" size="sm" icon={PlusCircle}>
+            <Button variant="primary" size="sm" icon={PlusCircle} className="min-h-[44px]">
               Create Public Room
             </Button>
           </Link>
@@ -250,7 +250,7 @@ export const PublicRoomsPage = () => {
                     disabled={isFull || isJoiningThis}
                     isLoading={isJoiningThis}
                     onClick={() => handleJoin(room.code)}
-                    className="w-full"
+                    className="w-full min-h-[44px]"
                   >
                     {isFull ? 'Room Full' : 'Join Battle'}
                   </Button>

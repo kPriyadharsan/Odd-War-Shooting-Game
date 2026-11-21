@@ -776,13 +776,13 @@ export const BattlefieldPage = () => {
 
   return (
     // Outer desk container (Desktop: warm study desk backdrop; Mobile: full-bleed sheet)
-    <div className="min-h-screen w-full bg-[#201D1A] sm:py-4 md:py-6 sm:px-4 md:px-8 flex flex-col items-center justify-start overflow-x-hidden">
+    <div className="min-h-screen min-h-dvh w-full bg-[#201D1A] sm:py-4 md:py-6 sm:px-4 md:px-8 flex flex-col items-center justify-start overflow-x-hidden">
       {/* =========================================================================
           PART 1 & PART 2: THE SINGLE CONTINUOUS NOTEBOOK SHEET
           The sheet ITSELF is the entire game interface.
           ========================================================================= */}
       <div
-        className={`w-full max-w-6xl min-h-[calc(100vh-2rem)] rounded-none sm:rounded-2xl md:rounded-3xl border-0 sm:border-2 sm:border-[#242730] relative overflow-hidden flex flex-col notebook-sheet-shadow notebook-inner-sheet transition-colors duration-300 ${paperStyleConfig.className}`}
+        className={`w-full max-w-6xl min-h-[calc(100vh-2rem)] min-h-[calc(100dvh-2rem)] rounded-none sm:rounded-2xl md:rounded-3xl border-0 sm:border-2 sm:border-[#242730] relative overflow-hidden flex flex-col notebook-sheet-shadow notebook-inner-sheet transition-colors duration-300 ${paperStyleConfig.className}`}
         style={{
           backgroundColor: paperStyleConfig.bgHex
         }}
@@ -818,7 +818,7 @@ export const BattlefieldPage = () => {
             {/* Top-Center: Authoritative Turn Stamp & Prominent Action Trigger */}
             <div className="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto justify-between sm:justify-center">
               <div
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 font-mono text-xs font-black shadow-xs ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 font-mono text-xs font-black shadow-xs shrink-0 ${
                   isMyTurn
                     ? 'bg-[#2E8557] border-[#242730] text-white animate-pulse'
                     : 'bg-black/5 border-[#242730]/30 text-[#4A4F5B]'
@@ -835,9 +835,9 @@ export const BattlefieldPage = () => {
                   type="button"
                   onClick={handleOpenBook}
                   disabled={bookActionLoading || isFlipping}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#D59926] hover:bg-[#B8811B] text-[#242730] font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-full bg-[#D59926] hover:bg-[#B8811B] text-[#242730] font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#242730]" />
+                  <Sparkles className="w-4 h-4 text-[#242730]" />
                   <span>OPEN MAGICAL BOOK</span>
                 </button>
               )}
@@ -855,9 +855,9 @@ export const BattlefieldPage = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenDrawingModal(eligibleRowNumber)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-full bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-black text-xs shadow-sketch cursor-pointer active:scale-95 transition-all border border-[#242730]"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4 h-4" />
                       <span>
                         {eligibleAction?.type === 'CHOICE_LOAD_OR_ATTACK'
                           ? `LOAD BULLET ON ROW ${eligibleRowNumber}`
@@ -872,16 +872,16 @@ export const BattlefieldPage = () => {
             {/* Top-Right: Ink Library Stamp Code, Sound Toggle & Leave Button */}
             <div className="flex items-center gap-1.5 sm:gap-2 order-2 sm:order-3 shrink-0">
               {/* Library Stamped Room Code */}
-              <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded border border-[#242730]/40 bg-black/5 font-mono text-xs text-[#242730]">
+              <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded border border-[#242730]/40 bg-black/5 font-mono text-xs text-[#242730]">
                 <span className="text-[10px] text-[#5C6069] hidden xs:inline">CODE:</span>
                 <span className="font-bold tracking-wider">{room.code}</span>
                 <button
                   type="button"
                   onClick={handleCopyCode}
                   title="Copy code"
-                  className="p-0.5 hover:bg-black/10 rounded transition-colors"
+                  className="p-1 hover:bg-black/10 rounded transition-colors"
                 >
-                  {copied ? <Check className="w-3 h-3 text-[#2E8557]" /> : <Copy className="w-3 h-3" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-[#2E8557]" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
 
@@ -890,7 +890,7 @@ export const BattlefieldPage = () => {
                 type="button"
                 onClick={handleToggleSound}
                 title={isSoundMuted ? 'Unmute game sounds' : 'Mute game sounds'}
-                className="p-1 sm:p-1.5 rounded border border-[#242730]/40 bg-black/5 hover:bg-black/10 text-[#242730] transition-colors cursor-pointer"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded border border-[#242730]/40 bg-black/5 hover:bg-black/10 text-[#242730] transition-colors cursor-pointer"
               >
                 {isSoundMuted ? <VolumeX className="w-4 h-4 text-[#CE4242]" /> : <Volume2 className="w-4 h-4" />}
               </button>
@@ -900,7 +900,7 @@ export const BattlefieldPage = () => {
                 type="button"
                 onClick={() => setShowLeaveConfirm(true)}
                 title="Leave match"
-                className="p-1 sm:p-1.5 rounded border border-[#242730]/40 bg-black/5 hover:bg-[#FDF2F2] hover:text-[#CE4242] text-[#5C6069] transition-colors cursor-pointer"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded border border-[#242730]/40 bg-black/5 hover:bg-[#FDF2F2] hover:text-[#CE4242] text-[#5C6069] transition-colors cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>

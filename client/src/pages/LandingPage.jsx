@@ -47,7 +47,7 @@ export const LandingPage = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-10">
-      <div className="max-w-6xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         
         {/* Floating Top Right Sound Controls */}
         <div className="flex justify-end mb-2">

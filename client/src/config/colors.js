@@ -17,6 +17,7 @@ export const COLOR_FAMILIES = {
     bgClass: 'bg-[#CE4242]',
     borderClass: 'border-[#CE4242]',
     lightBg: 'bg-[#FDF2F2]',
+    lightHex: '#FDF2F2',
     textClass: 'text-[#CE4242]',
     // Future Room Shade Scale: [dark, medium (primary), light, muted]
     shades: [
@@ -34,6 +35,7 @@ export const COLOR_FAMILIES = {
     bgClass: 'bg-[#2E8557]',
     borderClass: 'border-[#2E8557]',
     lightBg: 'bg-[#F0F7F3]',
+    lightHex: '#F0F7F3',
     textClass: 'text-[#2E8557]',
     // Future Room Shade Scale: [dark, medium (primary), light, muted]
     shades: [
@@ -51,6 +53,7 @@ export const COLOR_FAMILIES = {
     bgClass: 'bg-[#2B68B4]',
     borderClass: 'border-[#2B68B4]',
     lightBg: 'bg-[#F0F5FB]',
+    lightHex: '#F0F5FB',
     textClass: 'text-[#2B68B4]',
     // Future Room Shade Scale: [dark, medium (primary), light, muted]
     shades: [
@@ -68,6 +71,7 @@ export const COLOR_FAMILIES = {
     bgClass: 'bg-[#D59926]',
     borderClass: 'border-[#D59926]',
     lightBg: 'bg-[#FCF8EE]',
+    lightHex: '#FCF8EE',
     textClass: 'text-[#D59926]',
     // Future Room Shade Scale: [dark, medium (primary), light, muted]
     shades: [
@@ -85,6 +89,7 @@ export const COLOR_FAMILIES = {
     bgClass: 'bg-[#23252A]',
     borderClass: 'border-[#23252A]',
     lightBg: 'bg-[#F2F3F5]',
+    lightHex: '#F2F3F5',
     textClass: 'text-[#23252A]',
     // Future Room Shade Scale: [dark, medium (primary), light, muted]
     shades: [

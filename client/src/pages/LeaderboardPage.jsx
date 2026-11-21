@@ -78,7 +78,7 @@ export const LeaderboardPage = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-5xl mx-auto px-4 py-6 sm:py-10 space-y-8">
+    <div className="min-w-0 max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-5 sm:py-10 space-y-6 sm:space-y-8">
       {/* 1. Header Banner */}
       <section className="relative p-5 sm:p-7 rounded-2xl bg-[#FAF6EC] border-2 border-[#23252A] shadow-sketch-md overflow-hidden">
         {/* Subtle Notebook Ruling */}
@@ -107,7 +107,7 @@ export const LeaderboardPage = () => {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => fetchLeaderboard(pagination.page)}
-              className="p-2.5 rounded-xl border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-[#23252A] transition-colors shadow-sketch-sm flex items-center gap-1.5 font-mono text-xs"
+              className="p-2.5 min-h-[44px] rounded-xl border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-[#23252A] transition-colors shadow-sketch-sm flex items-center gap-1.5 font-mono text-xs"
               title="Refresh Standings"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -229,74 +229,79 @@ export const LeaderboardPage = () => {
                     }`}
                   >
                     {/* Rank & Warrior info */}
-                    <div className="sm:col-span-1 flex items-center sm:justify-center shrink-0">
-                      {getRankBadge(entry.rank)}
-                    </div>
+                    <div className="flex items-center gap-2.5 w-full sm:contents">
+                      <div className="sm:col-span-1 flex items-center sm:justify-center shrink-0">
+                        {getRankBadge(entry.rank)}
+                      </div>
 
-                    <div className="sm:col-span-4 flex items-center space-x-2.5 min-w-0">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
-                        style={{
-                          backgroundColor:
-                            entry.primaryColor === 'RED'
-                              ? '#dc2626'
-                              : entry.primaryColor === 'GREEN'
-                              ? '#16a34a'
-                              : entry.primaryColor === 'YELLOW'
-                              ? '#ca8a04'
-                              : entry.primaryColor === 'BLACK'
-                              ? '#1f2937'
-                              : '#2563eb'
-                        }}
-                        title={entry.primaryColor}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-handwriting font-bold text-base sm:text-lg text-[#23252A] truncate">
-                            {entry.nickname}
-                          </span>
-                          {isMe && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#23252A] text-[#F8F4EB]">
-                              YOU
+                      <div className="sm:col-span-4 flex items-center space-x-2.5 min-w-0 flex-1">
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                          style={{
+                            backgroundColor:
+                              entry.primaryColor === 'RED'
+                                ? '#dc2626'
+                                : entry.primaryColor === 'GREEN'
+                                ? '#16a34a'
+                                : entry.primaryColor === 'YELLOW'
+                                ? '#ca8a04'
+                                : entry.primaryColor === 'BLACK'
+                                ? '#1f2937'
+                                : '#2563eb'
+                          }}
+                          title={entry.primaryColor}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-handwriting font-bold text-base sm:text-lg text-[#23252A] truncate">
+                              {entry.nickname}
                             </span>
-                          )}
+                            {isMe && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#23252A] text-[#F8F4EB]">
+                                YOU
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Battles (W/L) */}
-                    <div className="sm:col-span-2 sm:text-center text-xs font-mono text-[#23252A] flex items-center justify-between sm:justify-center w-full sm:w-auto">
-                      <span className="sm:hidden text-[#6B7280]">Battles:</span>
-                      <span>
-                        <span className="font-bold text-[#16A34A]">{entry.wins}W</span>
-                        <span className="mx-1 text-[#9CA3AF]">/</span>
-                        <span className="text-[#DC2626]">{entry.losses}L</span>
-                        <span className="text-[#6B7280] ml-1">({entry.matchesPlayed})</span>
-                      </span>
-                    </div>
+                    {/* Stats Grid on Mobile, Columns on Desktop */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 w-full pt-2 border-t border-[#E5E7EB]/70 sm:contents">
+                      {/* Battles (W/L) */}
+                      <div className="sm:col-span-2 sm:text-center text-xs font-mono text-[#23252A] flex items-center justify-between sm:justify-center w-full sm:w-auto">
+                        <span className="sm:hidden text-[#6B7280]">Battles:</span>
+                        <span>
+                          <span className="font-bold text-[#16A34A]">{entry.wins}W</span>
+                          <span className="mx-1 text-[#9CA3AF]">/</span>
+                          <span className="text-[#DC2626]">{entry.losses}L</span>
+                          <span className="text-[#6B7280] ml-1">({entry.matchesPlayed})</span>
+                        </span>
+                      </div>
 
-                    {/* Win Rate */}
-                    <div className="sm:col-span-2 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
-                      <span className="sm:hidden text-[#6B7280]">Win Rate:</span>
-                      <span className="font-bold text-[#2563EB]">{entry.winPercentage}%</span>
-                    </div>
+                      {/* Win Rate */}
+                      <div className="sm:col-span-2 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
+                        <span className="sm:hidden text-[#6B7280]">Win Rate:</span>
+                        <span className="font-bold text-[#2563EB]">{entry.winPercentage}%</span>
+                      </div>
 
-                    {/* Streak */}
-                    <div className="sm:col-span-2 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
-                      <span className="sm:hidden text-[#6B7280]">Streak:</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Flame className="w-3.5 h-3.5 text-[#EA580C]" />
-                        <span className="font-bold text-[#EA580C]">{entry.currentStreak}</span>
-                        <span className="text-[#9CA3AF] text-[10px]">(Best: {entry.bestStreak})</span>
-                      </span>
-                    </div>
+                      {/* Streak */}
+                      <div className="sm:col-span-2 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
+                        <span className="sm:hidden text-[#6B7280]">Streak:</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 text-[#EA580C]" />
+                          <span className="font-bold text-[#EA580C]">{entry.currentStreak}</span>
+                          <span className="text-[#9CA3AF] text-[10px]">(Best: {entry.bestStreak})</span>
+                        </span>
+                      </div>
 
-                    {/* Knockouts */}
-                    <div className="sm:col-span-1 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
-                      <span className="sm:hidden text-[#6B7280]">KOs:</span>
-                      <span className="font-handwriting font-bold text-base text-[#DC2626]">
-                        {entry.opponentsEliminated}
-                      </span>
+                      {/* Knockouts */}
+                      <div className="sm:col-span-1 sm:text-center text-xs font-mono flex items-center justify-between sm:justify-center w-full sm:w-auto">
+                        <span className="sm:hidden text-[#6B7280]">KOs:</span>
+                        <span className="font-handwriting font-bold text-base text-[#DC2626]">
+                          {entry.opponentsEliminated}
+                        </span>
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -315,14 +320,14 @@ export const LeaderboardPage = () => {
               <button
                 disabled={pagination.page <= 1}
                 onClick={() => handlePageChange(pagination.page - 1)}
-                className="px-3 py-1.5 rounded-lg border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-xs font-mono font-medium disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                className="px-3.5 py-2 min-h-[44px] rounded-lg border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-xs font-mono font-medium disabled:opacity-40 disabled:pointer-events-none transition-colors inline-flex items-center justify-center gap-1"
               >
                 <ChevronLeft className="w-4 h-4 inline" /> Prev
               </button>
               <button
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => handlePageChange(pagination.page + 1)}
-                className="px-3 py-1.5 rounded-lg border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-xs font-mono font-medium disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                className="px-3.5 py-2 min-h-[44px] rounded-lg border border-[#D5CFC3] bg-white hover:bg-[#F4EEDB] text-xs font-mono font-medium disabled:opacity-40 disabled:pointer-events-none transition-colors inline-flex items-center justify-center gap-1"
               >
                 Next <ChevronRight className="w-4 h-4 inline" />
               </button>

@@ -42,7 +42,7 @@ export const DesignSystemPreview = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-12">
-      <div className="max-w-6xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         {/* Top Header */}
         <header className="mb-8 sm:mb-12 border-b border-[#D5CFC3] pb-4 sm:pb-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#EFE8DA] border border-[#D5CFC3] text-xs font-mono text-[#5C6069] mb-3">

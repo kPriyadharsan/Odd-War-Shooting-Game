@@ -55,7 +55,7 @@ export const MagicalBookOverlay = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg rounded-3xl border-2 border-[#242730] bg-[#FAF6EE] shadow-2xl p-4 sm:p-7 overflow-hidden flex flex-col items-center text-center notebook-sheet-shadow"
+          className="relative w-full max-w-lg rounded-3xl border-2 border-[#242730] bg-[#FAF6EE] shadow-2xl p-4 sm:p-7 overflow-y-auto max-h-[92vh] max-h-[92dvh] flex flex-col items-center text-center notebook-sheet-shadow my-auto"
         >
           {/* Subtle paper background lines inside popup */}
           <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_27px,rgba(43,104,180,0.2)_28px)]" />

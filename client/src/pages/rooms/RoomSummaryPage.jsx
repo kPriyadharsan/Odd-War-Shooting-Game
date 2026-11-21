@@ -133,7 +133,7 @@ export const RoomSummaryPage = () => {
   if (error && !room) {
     return (
       <NotebookBackground showMargin={true} className="py-6 sm:py-12">
-        <div className="max-w-xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+        <div className="max-w-xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
           <Card variant="taped" padding="lg" className="text-center">
             <div className="w-12 h-12 rounded-full bg-[#FDF2F2] border border-[#CE4242] text-[#CE4242] flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6" />
@@ -155,7 +155,7 @@ export const RoomSummaryPage = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-12">
-      <div className="max-w-4xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-4xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6 flex items-center justify-between">
@@ -174,7 +174,7 @@ export const RoomSummaryPage = () => {
             onClick={handleLeave}
             disabled={isLeaving}
             isLoading={isLeaving}
-            className="text-[#CE4242] hover:bg-[#FDF2F2]"
+            className="text-[#CE4242] hover:bg-[#FDF2F2] min-h-[44px]"
           >
             Leave Room
           </Button>
@@ -236,7 +236,7 @@ export const RoomSummaryPage = () => {
               <IconButton
                 icon={copied ? Check : Copy}
                 variant="secondary"
-                size="sm"
+                size="md"
                 title="Copy room code"
                 onClick={handleCopyCode}
                 className={copied ? 'text-[#2E8557] border-[#2E8557]' : ''}
@@ -248,7 +248,7 @@ export const RoomSummaryPage = () => {
           <div className="mb-4">
             <Link
               to={`/rooms/${room.code}/waiting`}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-sm shadow-sm transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 min-h-[44px] py-2.5 px-4 rounded-xl bg-[#2E8557] hover:bg-[#1C5236] text-white font-mono font-bold text-sm shadow-sm transition-colors"
             >
               <Sparkles className="w-4 h-4" />
               <span>Enter Multiplayer Waiting Room</span>
@@ -378,7 +378,7 @@ export const RoomSummaryPage = () => {
               <IconButton
                 icon={RefreshCw}
                 variant="ghost"
-                size="sm"
+                size="md"
                 title="Refresh player list"
                 onClick={fetchRoom}
               />

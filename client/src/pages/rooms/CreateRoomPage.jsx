@@ -82,7 +82,7 @@ export const CreateRoomPage = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-12">
-      <div className="max-w-3xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-3xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6">
@@ -121,7 +121,7 @@ export const CreateRoomPage = () => {
                 Room Access Type
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -224,7 +224,7 @@ export const CreateRoomPage = () => {
                 <span className="text-[11px] font-mono font-normal text-[#8E949F]">100 or 200 Pages</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setBookPageCount(100)}
@@ -281,7 +281,7 @@ export const CreateRoomPage = () => {
                 <span className="text-[11px] font-mono font-normal text-[#8E949F]">2 to 4 Players</span>
               </label>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 xs:gap-3">
                 {[2, 3, 4].map((count) => {
                   const isSelected = maxPlayers === count;
                   return (
@@ -289,17 +289,17 @@ export const CreateRoomPage = () => {
                       key={count}
                       type="button"
                       onClick={() => setMaxPlayers(count)}
-                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      className={`p-2 xs:p-3 rounded-xl border text-center transition-all cursor-pointer select-none ${
                         isSelected
                           ? 'border-2 border-[#23252A] bg-[#FFFDF9] shadow-sketch'
                           : 'border-[#D5CFC3] bg-[#FCFAF3] hover:border-[#9C9486]'
                       }`}
                     >
-                      <div className="font-handwriting font-bold text-2xl text-[#23252A]">
-                        {count} Players
+                      <div className="font-handwriting font-bold text-lg xs:text-2xl text-[#23252A] leading-tight">
+                        {count} <span className="text-xs xs:text-base font-normal">Warriors</span>
                       </div>
-                      <div className="text-[10px] font-mono text-[#5C6069]">
-                        {count === 4 ? 'Full Squad' : count === 2 ? 'Duel (1v1)' : 'Trio Skirmish'}
+                      <div className="text-[9px] xs:text-[10px] font-mono text-[#5C6069] mt-0.5 truncate">
+                        {count === 4 ? 'Squad' : count === 2 ? 'Duel (1v1)' : 'Trio'}
                       </div>
                     </button>
                   );
@@ -331,9 +331,9 @@ export const CreateRoomPage = () => {
             )}
 
             {/* Submit Action */}
-            <div className="pt-4 border-t border-[#D5CFC3] flex items-center justify-between">
-              <Link to="/rooms">
-                <Button variant="ghost">Cancel</Button>
+            <div className="pt-4 border-t border-[#D5CFC3] flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-3">
+              <Link to="/rooms" className="w-full xs:w-auto">
+                <Button variant="ghost" className="w-full xs:w-auto min-h-[44px]">Cancel</Button>
               </Link>
 
               <Button
@@ -341,7 +341,7 @@ export const CreateRoomPage = () => {
                 variant="primary"
                 size="lg"
                 isLoading={isSubmitting}
-                className="shadow-sketch-dark px-8"
+                className="shadow-sketch-dark px-8 w-full xs:w-auto min-h-[44px]"
               >
                 Create Room
               </Button>

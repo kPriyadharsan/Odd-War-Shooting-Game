@@ -112,7 +112,7 @@ export const LoginPage = () => {
 
             <Link
               to="/lobby"
-              className="w-full py-2.5 px-4 rounded-xl border border-[#D5CFC3] bg-transparent hover:bg-[#F4EEDB] text-center font-handwriting font-bold text-sm text-[#23252A] transition-colors block"
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border border-[#D5CFC3] bg-transparent hover:bg-[#F4EEDB] text-center font-handwriting font-bold text-sm text-[#23252A] transition-colors flex items-center justify-center"
             >
               Play as Guest Warrior
             </Link>

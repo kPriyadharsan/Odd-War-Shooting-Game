@@ -41,6 +41,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         handwriting: ['"Patrick Hand"', 'cursive', 'sans-serif'],
+        display: ['"Patrick Hand"', 'cursive', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace']
       },
       boxShadow: {

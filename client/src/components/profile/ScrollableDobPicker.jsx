@@ -129,7 +129,8 @@ const DrumColumn = ({
           scrollSnapType: 'y mandatory',
           scrollbarWidth: 'none',
           WebkitOverflowScrolling: 'touch',
-          transformStyle: 'preserve-3d'
+          transformStyle: 'preserve-3d',
+          touchAction: 'pan-y'
         }}
       >
         <div style={{ height: ITEM_HEIGHT }} />

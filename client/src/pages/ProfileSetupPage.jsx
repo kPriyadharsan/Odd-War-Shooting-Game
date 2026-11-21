@@ -500,22 +500,20 @@ export const ProfileSetupPage = () => {
     <NotebookBackground
       showMargin={false}
       className="
-        min-h-0 h-[calc(100vh-3.5rem)] h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)]
+        min-h-[calc(100vh-3.5rem)] min-h-[calc(100dvh-3.5rem)]
         flex flex-col
-        overflow-x-hidden overflow-y-hidden
-        py-0 sm:py-4 lg:py-8
-        lg:min-h-[calc(100vh-3.5rem)] lg:h-auto lg:max-h-none
+        overflow-x-hidden overflow-y-auto
+        py-2 sm:py-4 lg:py-8
         lg:overflow-visible
       "
     >
       <div
         className="
           w-full max-w-6xl mx-auto
-          flex-1 min-h-0
+          flex-1
           flex flex-col
           px-2.5 sm:px-6 lg:px-8
           py-2 sm:py-3 lg:py-0
-          overflow-hidden lg:overflow-visible
         "
         style={{ fontFamily: FONT_STACK }}
       >
@@ -649,22 +647,22 @@ export const ProfileSetupPage = () => {
             <form
               onSubmit={handleSubmit}
               className="
-                flex-1 min-h-0
+                flex-1
                 flex flex-col
                 rounded-2xl
                 border border-[#DED7C9]
                 bg-[#FFFEFA]
                 shadow-[0_4px_20px_rgba(35,37,42,0.04)]
-                overflow-hidden
+                overflow-visible
               "
             >
 
-              {/* FORM SECTIONS (Balanced vertical flow on mobile, no page scroll) */}
+              {/* FORM SECTIONS (Balanced vertical flow on mobile) */}
               <div className="
-                flex-1 min-h-0
+                flex-1
                 flex flex-col justify-between
                 p-2.5 sm:p-5 lg:p-6
-                overflow-hidden
+                space-y-3 sm:space-y-4
               ">
 
                 {/* ------------------------------------ */}
@@ -882,7 +880,7 @@ export const ProfileSetupPage = () => {
                   iconPosition="right"
                   className="
                     w-full sm:w-auto
-                    min-h-[42px] sm:min-h-[46px]
+                    min-h-[44px]
                     px-6
                     text-xs sm:text-sm
                     font-bold

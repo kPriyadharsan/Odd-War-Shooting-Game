@@ -428,15 +428,15 @@ export const WaitingRoomPage = () => {
   }
 
   return (
-    <NotebookBackground className="py-4 sm:py-8 min-h-screen">
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6">
+    <NotebookBackground className="py-3 sm:py-8 min-h-screen min-h-dvh">
+      <div className="max-w-6xl mx-auto px-3 xs:px-4 sm:px-6">
         {/* Navigation & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-[#4A4F5B]/20">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={() => setLeaveConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-[#4A4F5B]/30 bg-[#FCFAF5] hover:bg-[#F4EFE6] text-xs font-mono text-[#242730] transition-colors shrink-0 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Leave</span>
@@ -466,7 +466,7 @@ export const WaitingRoomPage = () => {
                 type="button"
                 onClick={handleCopyCode}
                 title="Copy Room Code"
-                className="p-1 hover:bg-[#242730]/10 rounded transition-colors text-[#242730]"
+                className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-[#242730]/10 rounded transition-colors text-[#242730] cursor-pointer"
               >
                 {copied ? <Check className="w-4 h-4 text-[#2E8557]" /> : <Copy className="w-4 h-4" />}
               </button>
@@ -696,7 +696,7 @@ export const WaitingRoomPage = () => {
                   size="lg"
                   onClick={handleToggleReady}
                   disabled={isReadyActionLoading || room.status === 'STARTING'}
-                  className={`w-full sm:w-auto ${
+                  className={`w-full sm:w-auto min-h-[48px] flex items-center justify-center ${
                     isCurrentPlayerReady
                       ? 'border-[#2E8557] text-[#2E8557] hover:bg-[#F0F7F3]'
                       : 'bg-[#2E8557] hover:bg-[#1C5236] text-white border-[#1C5236]'
@@ -724,7 +724,7 @@ export const WaitingRoomPage = () => {
                     size="lg"
                     onClick={handleStartMatch}
                     disabled={!canStartMatch || isStartingMatch}
-                    className={`w-full sm:w-auto ${
+                    className={`w-full sm:w-auto min-h-[48px] flex items-center justify-center ${
                       canStartMatch
                         ? 'bg-[#2E8557] hover:bg-[#1C5236] text-white border-[#1C5236]'
                         : 'opacity-50 cursor-not-allowed'

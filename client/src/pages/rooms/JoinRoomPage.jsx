@@ -46,7 +46,7 @@ export const JoinRoomPage = () => {
 
   return (
     <NotebookBackground showMargin={true} className="py-4 sm:py-12">
-      <div className="max-w-xl mx-auto pl-9 sm:pl-16 md:pl-20 pr-3 sm:pr-8">
+      <div className="max-w-xl mx-auto px-3.5 xs:px-4 sm:pl-16 md:pl-20 sm:pr-8">
         
         {/* Navigation Breadcrumb */}
         <div className="mb-6">
@@ -87,6 +87,8 @@ export const JoinRoomPage = () => {
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 maxLength={8}
+                inputMode="text"
+                autoCapitalize="characters"
                 helperText="6-character code"
                 autoFocus
               />
@@ -113,8 +115,8 @@ export const JoinRoomPage = () => {
             )}
 
             {/* Submit */}
-            <div className="pt-2 flex items-center justify-between">
-              <Link to="/rooms/public" className="text-xs font-handwriting text-[#2B68B4] hover:underline">
+            <div className="pt-2 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-3">
+              <Link to="/rooms/public" className="text-xs font-handwriting text-[#2B68B4] hover:underline text-center xs:text-left py-1">
                 Or browse public rooms &rarr;
               </Link>
 
@@ -125,7 +127,7 @@ export const JoinRoomPage = () => {
                 isLoading={isSubmitting}
                 icon={ArrowRight}
                 iconPosition="right"
-                className="px-6"
+                className="px-6 min-h-[44px] w-full xs:w-auto"
               >
                 Join Room
               </Button>
