@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProfileGate } from './components/auth/ProfileGate.jsx';
 import { RootLayout } from './layouts/RootLayout.jsx';
@@ -18,20 +19,50 @@ import { BattlefieldPage } from './pages/rooms/BattlefieldPage.jsx';
 import { DesignSystemPreview } from './pages/DesignSystemPreview.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
+import { CinematicLoadingScreen } from './components/loading/index.js';
+import { useAppReadiness } from './hooks/useAppReadiness.js';
+
+/**
+ * StartupLoadingGate orchestrates the GTA V-inspired cinematic loading experience
+ * on fresh application startup with genuine readiness checks and minimum 5s duration.
+ */
+function StartupLoadingGate({ children }) {
+  const readiness = useAppReadiness({ minDuration: 5000 });
+
+  return (
+    <>
+      <AnimatePresence>
+        {readiness.shouldShow && (
+          <CinematicLoadingScreen
+            mode="startup"
+            progress={readiness.progress}
+            statusMessage={readiness.statusMessage}
+            error={readiness.error}
+            onRetry={readiness.retry}
+            isTransitioning={readiness.isTransitioning}
+            minDuration={5}
+          />
+        )}
+      </AnimatePresence>
+      {children}
+    </>
+  );
+}
 
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <Routes>
-          <Route path="/" element={<RootLayout />}>
-            {/* 1. Landing Page */}
-            <Route index element={<LandingPage />} />
+      <StartupLoadingGate>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<RootLayout />}>
+              {/* 1. Landing Page */}
+              <Route index element={<LandingPage />} />
 
             {/* 2. Authentication */}
             <Route path="login" element={<LoginPage />} />
@@ -158,7 +189,8 @@ export function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </StartupLoadingGate>
+  </AuthProvider>
   );
 }
 

@@ -225,3 +225,13 @@ body {
   background-repeat: repeat-x;
 }
 
+/* Mobile Safe Area Inset Helpers */
+.pt-safe-top {
+  padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe-bottom {
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+

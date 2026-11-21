@@ -35,6 +35,8 @@ import { getSocket } from '../../services/socket.js';
 import { soundEffects } from '../../services/soundEffects.js';
 import { getPlayerSession } from '../../store/playerSession.js';
 import { getPaperStyle, DEFAULT_PAPER_STYLE } from '../../config/paperStyles.js';
+import { CinematicLoadingScreen } from '../../components/loading/index.js';
+import { useGameReadiness } from '../../hooks/useGameReadiness.js';
 
 /**
  * BattlefieldPage Component (Single Notebook Sheet Redesign)
@@ -55,6 +57,9 @@ export const BattlefieldPage = () => {
   const navigate = useNavigate();
 
   const currentPlayer = getPlayerSession();
+
+  const gameReadiness = useGameReadiness({ minDuration: 5000 });
+  const initializeBattlefieldRef = useRef(null);
 
   const [room, setRoom] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,14 +132,22 @@ export const BattlefieldPage = () => {
     const initializeBattlefield = async () => {
       setIsLoading(true);
       setError(null);
+      gameReadiness.reportMilestone(20, 'Securing battlefield clearance...');
+
       try {
         const initialData = await roomApi.getRoomByCode(roomCode);
+        if (!initialData) {
+          throw new Error('Battlefield room not found or session expired.');
+        }
+
         if (isMounted) {
           setRoom(initialData);
           if (initialData.gameState?.lastFlip) {
             setLastOutcome(initialData.gameState.lastFlip);
           }
         }
+
+        gameReadiness.reportMilestone(55, 'Authorizing warrior credentials & room token...');
 
         // Join socket room
         socket.emit(
@@ -160,9 +173,13 @@ export const BattlefieldPage = () => {
         // Ensure match transitions to PLAYING
         socket.emit('START_PLAYING', { roomCode });
         roomApi.startPlaying({ code: roomCode }).catch(() => {});
+
+        gameReadiness.reportMilestone(85, 'Unfolding notebook sheet & territory stations...');
+        gameReadiness.markGameReady();
       } catch (err) {
         if (isMounted) {
           setError(err.message || 'Failed to load battlefield');
+          gameReadiness.reportError(err.message || 'Failed to load battlefield');
         }
       } finally {
         if (isMounted) {
@@ -171,6 +188,7 @@ export const BattlefieldPage = () => {
       }
     };
 
+    initializeBattlefieldRef.current = initializeBattlefield;
     initializeBattlefield();
 
     // Socket Event Listeners
@@ -537,6 +555,13 @@ export const BattlefieldPage = () => {
     }
   };
 
+  // Auto-open magical book overlay when it becomes player's turn to flip
+  useEffect(() => {
+    if (isMyTurn && room?.status === 'PLAYING' && room?.gameState?.turnPhase === 'AWAITING_FLIP') {
+      setIsBookOverlayOpen(true);
+    }
+  }, [isMyTurn, room?.status, room?.gameState?.turnPhase, room?.gameState?.turnNumber]);
+
   // Part 6: Open Drawing Popup for an Eligible Row
   const handleOpenDrawingModal = (rowNum, stageOverride = null) => {
     const targetRow = rowNum || eligibleRowNumber || selectedRowNumber || 1;
@@ -715,37 +740,37 @@ export const BattlefieldPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (gameReadiness.isLoading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#23201C] p-4">
-        <div className="w-full max-w-md p-8 rounded-2xl bg-[#FAF6EE] border-2 border-[#242730] shadow-2xl text-center paper-style-classic-blue">
-          <LoadingIndicator size="lg" text="Unfolding Notebook Sheet..." />
-          <p className="font-handwriting text-sm text-[#4A4F5B] mt-2">
-            Sharpening pencils & establishing player territory columns...
-          </p>
-        </div>
-      </div>
+      <CinematicLoadingScreen
+        mode="game"
+        progress={gameReadiness.progress}
+        statusMessage={gameReadiness.statusMessage}
+        error={gameReadiness.error}
+        onRetry={() => {
+          gameReadiness.resetGameReadiness();
+          initializeBattlefieldRef.current?.();
+        }}
+        onCancel={() => navigate('/lobby')}
+        isTransitioning={gameReadiness.isTransitioning}
+        minDuration={5}
+      />
     );
   }
 
   if (error || !room) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#23201C] p-4">
-        <div className="w-full max-w-md p-8 rounded-2xl bg-[#FAF6EE] border-2 border-[#242730] shadow-2xl text-center paper-style-classic-blue">
-          <div className="w-12 h-12 rounded-full bg-[#FDF2F2] border border-[#CE4242]/30 flex items-center justify-center mx-auto mb-4 text-[#CE4242]">
-            <AlertCircle className="w-6 h-6" />
-          </div>
-          <h2 className="font-display text-xl font-bold text-[#242730] mb-2">
-            Notebook Arena Unavailable
-          </h2>
-          <p className="font-mono text-sm text-[#4A4F5B] mb-6">
-            {error || 'Match room not found.'}
-          </p>
-          <Button variant="primary" onClick={() => navigate('/lobby')}>
-            Return to Game Lobby
-          </Button>
-        </div>
-      </div>
+      <CinematicLoadingScreen
+        mode="game"
+        progress={100}
+        error={error || 'Match room not found or session expired.'}
+        onRetry={() => {
+          gameReadiness.resetGameReadiness();
+          initializeBattlefieldRef.current?.();
+        }}
+        onCancel={() => navigate('/lobby')}
+        minDuration={5}
+      />
     );
   }
 
@@ -995,6 +1020,7 @@ export const BattlefieldPage = () => {
         bookPageCount={room.bookPageCount || 100}
         activePlayerNickname={activePlayer?.nickname}
         isCurrentPlayer={isMyTurn}
+        onOpenBook={handleOpenBook}
         onClose={() => setIsBookOverlayOpen(false)}
       />
 

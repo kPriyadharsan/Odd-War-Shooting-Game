@@ -1,14 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, BookOpen, Check, X, ArrowRight } from 'lucide-react';
-import { MagicalBook } from './MagicalBook.jsx';
+import { X, Sparkles } from 'lucide-react';
+import { RealisticMagicalBook } from './RealisticMagicalBook.jsx';
 import { soundEffects } from '../../services/soundEffects.js';
 
 /**
- * MagicalBookOverlay Component (Part 5 Redesign)
+ * MagicalBookOverlay Component
  *
- * Renders the 3D Magical Book of Fate as a cinematic overlay DIRECTLY over the notebook sheet.
- * Auto-dismisses after revealing the authoritative result, returning focus to the notebook sheet.
+ * Implements:
+ * 1. React Portal overlay directly onto document.body at top-level z-index (z-[9999]).
+ * 2. Never clipped by parent containers, stacking contexts, or overflows.
+ * 3. Keeps notebook battlefield visible with subtle darkened/blurred backdrop.
+ * 4. Not an ordinary rectangular modal: The physical magical notebook itself floats directly
+ *    in the center of the viewport with 3D perspective and dynamic ambient shadow.
+ * 5. Automatic transition flow:
+ *    - Waiting: floats gently.
+ *    - Click: opens cover in 3D around spine.
+ *    - Flips: individual cascading sheets flip with sound.
+ *    - Settles: ONLY the server-generated number appears in vintage ink.
+ *    - Auto-dismisses smoothly after revealing the number, returning focus to the battlefield.
  */
 export const MagicalBookOverlay = ({
   isOpen = false,
@@ -17,144 +28,109 @@ export const MagicalBookOverlay = ({
   bookPageCount = 100,
   activePlayerNickname = 'Warrior',
   isCurrentPlayer = false,
+  onOpenBook = () => {},
   onClose = () => {},
-  autoCloseDelayMs = 3200
+  autoCloseDelayMs = 2800
 }) => {
   const [hasFinishedAnimation, setHasFinishedAnimation] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const closeTimerRef = useRef(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => {
+      setIsMounted(false);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (isFlipping) {
       setHasFinishedAnimation(false);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     }
   }, [isFlipping]);
 
-  // When animation finishes or outcome is revealed, auto-dismiss after short delay
-  useEffect(() => {
-    if (!isOpen || isFlipping || !outcome) return;
-
+  const handleAnimationComplete = () => {
     setHasFinishedAnimation(true);
-    const timer = setTimeout(() => {
+
+    // Auto-dismiss after the player has observed the revealed number
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
       onClose();
     }, autoCloseDelayMs);
+  };
 
-    return () => clearTimeout(timer);
-  }, [isOpen, isFlipping, outcome, autoCloseDelayMs, onClose]);
+  if (!isOpen || !isMounted || typeof document === 'undefined') return null;
 
-  if (!isOpen) return null;
-
-  const isOdd = outcome?.isOdd ?? false;
-  const targetRow = outcome?.targetRow ?? null;
   const pageNumber = outcome?.pageNumber ?? null;
-  const finalDigit = outcome?.finalDigit ?? (pageNumber ? pageNumber % 10 : null);
 
-  return (
+  const overlayContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-xs select-none">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.88, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: -15 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg rounded-3xl border-2 border-[#242730] bg-[#FAF6EE] shadow-2xl p-4 sm:p-7 overflow-y-auto max-h-[92vh] max-h-[92dvh] flex flex-col items-center text-center notebook-sheet-shadow my-auto"
+      <motion.div
+        key="magical-book-overlay-portal"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="fixed inset-0 z-[9999] w-screen h-screen h-dvh min-h-dvh flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs select-none overflow-hidden"
+      >
+        {/* Subtle Ambient Particle & Battlefield Backdrop Lighting */}
+        <div className="absolute inset-0 bg-radial from-[#D59926]/10 via-transparent to-black/70 pointer-events-none" />
+
+        {/* Minimalist Close / Dismiss Button (Top Right) */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors z-50 cursor-pointer"
+          title="Dismiss book"
+          aria-label="Dismiss book"
         >
-          {/* Subtle paper background lines inside popup */}
-          <div className="absolute inset-0 pointer-events-none opacity-20 bg-[repeating-linear-gradient(to_bottom,transparent_0px,transparent_27px,rgba(43,104,180,0.2)_28px)]" />
-          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-[#D75050]/20 pointer-events-none" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
 
-          {/* Close / Skip button */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 rounded-full text-[#4A4F5B] hover:text-[#242730] hover:bg-black/5 transition-colors z-20 cursor-pointer"
-            title="Close overlay"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Header Badge */}
-          <div className="relative z-10 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#242730] text-[#F8F4EB] shadow-xs">
-              <BookOpen className="w-3.5 h-3.5 text-[#D59926]" />
-              THE MAGICAL BOOK OF FATE ({bookPageCount} PAGES)
+        {/* Top Floating Turn Status Label */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
+        >
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-[#D59926]/40 text-white font-mono text-[11px] sm:text-xs font-bold shadow-lg">
+            <Sparkles className="w-3.5 h-3.5 text-[#D59926]" />
+            <span>
+              {isCurrentPlayer
+                ? 'YOUR TURN: MAGICAL BOOK OF FATE'
+                : `${activePlayerNickname.toUpperCase()}'S TURN: MAGICAL BOOK`}
             </span>
-            <p className="font-handwriting text-xs sm:text-sm text-[#4A4F5B] mt-1.5">
-              {isFlipping
-                ? `${activePlayerNickname} is flipping through the ruled pages...`
-                : `${activePlayerNickname} opened the book of destiny.`}
-            </p>
-          </div>
-
-          {/* Center: 3D Magical Book */}
-          <div className="relative z-10 my-2 sm:my-4 flex items-center justify-center w-full min-h-[220px]">
-            <MagicalBook
-              isOpening={isFlipping}
-              isFlipping={isFlipping}
-              finalPageNumber={pageNumber}
-              maxPages={bookPageCount}
-              outcome={outcome}
-              onAnimationComplete={() => setHasFinishedAnimation(true)}
-            />
-          </div>
-
-          {/* Outcome Announcement */}
-          <div className="relative z-10 w-full mt-3">
-            {isFlipping ? (
-              <div className="flex items-center justify-center gap-2 py-2 text-xs font-mono text-[#D59926] font-bold animate-pulse">
-                <Sparkles className="w-4 h-4 animate-spin" />
-                <span>FLIPPING PAGES... REVEALING FATE</span>
-              </div>
-            ) : outcome ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`p-3.5 rounded-2xl border-2 ${
-                  isOdd
-                    ? 'bg-[#F0F7F3] border-[#2E8557] text-[#1C5236]'
-                    : 'bg-[#FCF8EE] border-[#D59926] text-[#96630D]'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <span className="font-mono text-xs uppercase tracking-wider font-bold">
-                    REVEALED: PAGE {pageNumber} (ENDS IN {finalDigit})
-                  </span>
-                </div>
-
-                {isOdd ? (
-                  <div>
-                    <h3 className="font-display text-lg sm:text-xl font-bold flex items-center justify-center gap-1.5 text-[#1C5236]">
-                      <Sparkles className="w-5 h-5 text-[#D59926]" />
-                      ROW {targetRow} ACTIVATED!
-                    </h3>
-                    <p className="font-mono text-xs text-[#2E8557] mt-0.5">
-                      {isCurrentPlayer
-                        ? `Tap Row ${targetRow} on your notebook column to draw your warrior!`
-                        : `Warrior ${activePlayerNickname} unlocked Row ${targetRow}.`}
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <h3 className="font-display text-base sm:text-lg font-bold text-[#96630D]">
-                      EVEN DIGIT — NO ACTION
-                    </h3>
-                    <p className="font-mono text-xs text-[#96630D]/80 mt-0.5">
-                      Even page drawn. Turn passes to the next warrior.
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#242730] text-[#F8F4EB] font-mono text-xs font-bold hover:bg-black transition-all cursor-pointer shadow-xs"
-                >
-                  <span>Continue to Notebook</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </motion.div>
-            ) : null}
           </div>
         </motion.div>
-      </div>
+
+        {/* The 3D Floating Physical Notebook (Center of Viewport) */}
+        <motion.div
+          initial={{ scale: 0.85, y: 25, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.88, y: -20, opacity: 0 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          className="relative z-30 max-w-full flex items-center justify-center"
+        >
+          <RealisticMagicalBook
+            isOpen={isOpen}
+            isFlipping={isFlipping}
+            finalPageNumber={pageNumber}
+            maxPages={bookPageCount}
+            outcome={outcome}
+            isCurrentPlayer={isCurrentPlayer}
+            onOpen={onOpenBook}
+            onAnimationComplete={handleAnimationComplete}
+            autoCloseDelayMs={autoCloseDelayMs}
+          />
+        </motion.div>
+      </motion.div>
     </AnimatePresence>
   );
+
+  return createPortal(overlayContent, document.body);
 };
+
+export default MagicalBookOverlay;
